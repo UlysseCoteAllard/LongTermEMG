@@ -370,5 +370,3 @@ if __name__ == '__main__':
             myfile.write(str(np.mean(test_0, axis=0)) + '\n')
             myfile.write(str(np.mean(test_0, axis=1)) + '\n')
             myfile.write(str(np.mean(test_0)) + '\n')
-
-# TODO Use DANN during training (on top of pre-training)

@@ -36,4 +36,3 @@ class ReversalLayerF(Function):
     @staticmethod
     def grad_reverse(x, constant):
         return ReversalLayerF.apply(x, constant)
-

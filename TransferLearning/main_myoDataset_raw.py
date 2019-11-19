@@ -125,7 +125,7 @@ def evaluate_model(X_test_0, X_test_1, Y_test_0, Y_test_1, model):
     test_1 = TensorDataset(torch.from_numpy(np.array(X_test_1, dtype=np.float32)),
                            torch.from_numpy(np.array(Y_test_1, dtype=np.int64)))
     test_0_loader = torch.utils.data.DataLoader(test_0, batch_size=256, shuffle=False)
-    total = 0
+    total_0 = 0
     correct_prediction_test_0 = 0
     with torch.no_grad():
         for k, data_test_0 in enumerate(test_0_loader, 0):
@@ -136,10 +136,10 @@ def evaluate_model(X_test_0, X_test_1, Y_test_0, Y_test_1, model):
             outputs_test_0 = model(inputs_test_0)
             _, predicted = torch.max(outputs_test_0.data, 1)
             correct_prediction_test_0 += (predicted.cpu().numpy() == ground_truth_test_0.data.cpu().numpy()).sum()
-            total += ground_truth_test_0.size(0)
-    print("ACCURACY TEST_0 FINAL : %.3f %%" % (100 * float(correct_prediction_test_0) / float(total)))
+            total_0 += ground_truth_test_0.size(0)
+    print("ACCURACY TEST_0 FINAL : %.3f %%" % (100 * float(correct_prediction_test_0) / float(total_0)))
     test_1_loader = torch.utils.data.DataLoader(test_1, batch_size=256, shuffle=False)
-    total = 0
+    total_1 = 0
     correct_prediction_test_1 = 0
     with torch.no_grad():
         for k, data_test_1 in enumerate(test_1_loader, 0):
@@ -150,9 +150,10 @@ def evaluate_model(X_test_0, X_test_1, Y_test_0, Y_test_1, model):
             outputs_test_1 = model(inputs_test_1)
             _, predicted = torch.max(outputs_test_1.data, 1)
             correct_prediction_test_1 += (predicted.cpu().numpy() == ground_truth_test_1.data.cpu().numpy()).sum()
-            total += ground_truth_test_1.size(0)
-    print("ACCURACY TEST_1 FINAL : %.3f %%" % (100 * float(correct_prediction_test_1) / float(total)))
-    return 100 * float(correct_prediction_test_0) / float(total), 100 * float(correct_prediction_test_1) / float(total)
+            total_1 += ground_truth_test_1.size(0)
+    print("ACCURACY TEST_1 FINAL : %.3f %%" % (100 * float(correct_prediction_test_1) / float(total_1)))
+    return 100 * float(correct_prediction_test_0) / float(total_0), \
+           100 * float(correct_prediction_test_1) / float(total_1)
 
 
 if __name__ == '__main__':
