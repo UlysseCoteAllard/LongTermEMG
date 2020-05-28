@@ -1,10 +1,16 @@
 # LongTermEMG
 
-Work in progress. The repository should change to be more user friendly.
+Work in progress. 
+Note that the current implementation of TDPSD and TSD had a mistake which negatively impacted performance. They are being updated to 
+correctly reflect their description and will be compared with the matlab implementation from the original author 
+(available here: https://github.com/RamiKhushaba/getTDPSDfeat) to make sure that they output the same values. The article 
+will be updated accordingly. 
 
 LongTerm 3DC Dataset is available here: http://ieee-dataport.org/1948
 
 3DC Dataset is available here: https://github.com/UlysseCoteAllard/sEMG_handCraftedVsLearnedFeatures
+
+
 
 First prepare the longterm 3DC Dataset by running: PrepareAndLoadDataLongTerm->prepare_from_raw_dataset.py Then in TrainingsAndEvaluations all the files are there which were used to obtain the results from: Virtual Reality to Study the Gap Between Offline and Real-Time EMG-based Gesture Recognition https://arxiv.org/abs/1912.09380
 
