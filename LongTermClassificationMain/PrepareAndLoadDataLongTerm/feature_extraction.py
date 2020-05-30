@@ -503,8 +503,8 @@ def getTeagerKaiserEnergyOperator(vector):
 
 def getTDD(vector):
     lambda_variable = 0.1
-    first_derivative = np.gradient(vector)
-    second_derivative = np.gradient(first_derivative)
+    first_derivative = np.diff(vector, axis=0)
+    second_derivative = np.diff(first_derivative, axis=0)
     moment_zero = np.power(getRootSquaredMoment(vector) / (len(vector) - 1), lambda_variable) / lambda_variable
     moment_two = np.power(getRootSquaredMoment(first_derivative) / (len(vector) - 1), lambda_variable) / lambda_variable
     moment_four = np.power(getRootSquaredMoment(second_derivative) / (len(vector) - 1),
@@ -572,8 +572,8 @@ def getCosineSimilarityAsDescribedInOriginalTDPSD_article(vector_a, vector_b):
 
 def getFeatures_for_tdpsd(vector):
     lambda_variable = 0.1
-    first_derivative = np.gradient(vector)
-    second_derivative = np.gradient(first_derivative)
+    first_derivative = np.diff(vector, axis=0)
+    second_derivative = np.diff(first_derivative, axis=0)
     moment_zero = np.power(getRootSquaredMoment(vector), lambda_variable) / lambda_variable
     moment_two = np.power(getRootSquaredMoment(first_derivative), lambda_variable) / lambda_variable
     moment_four = np.power(getRootSquaredMoment(second_derivative), lambda_variable) / lambda_variable
@@ -695,7 +695,7 @@ if __name__ == '__main__':
          39.303, 49.505, 28.771, 12.308, -30.453, -54.57, 6.6631, 31.894, 36.134, -62.292, -32.043, 5.857, 2.1077,
          -2.6899, 120.55, 84.02, -7.7783, -30.075, -103.94, -91.047, -85.004]
 
-
+    '''
     true_MFL_a = 3.5994
     true_MFL_b = 4.968
     true_MFL_c = 3.9504
@@ -717,3 +717,5 @@ if __name__ == '__main__':
     print(getSampEn(a))
     print(getSampEn(b))
     print(getSampEn(c))
+    '''
+    print(get_TDPSD([1, 2, 3, 4, 5]))

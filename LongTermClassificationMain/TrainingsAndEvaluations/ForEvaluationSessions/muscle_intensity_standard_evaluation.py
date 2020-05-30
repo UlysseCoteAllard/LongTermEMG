@@ -10,7 +10,7 @@ from LongTermClassificationMain.Models.raw_TCN import TemporalConvNet as rawConv
 from LongTermClassificationMain.PrepareAndLoadDataLongTerm.load_dataset_in_dataloader import \
     load_dataloaders_test_sessions
 from LongTermClassificationMain.TrainingsAndEvaluations.utils_training_and_evaluation import create_confusion_matrix, \
-    create_long_term_classification_graph, create_activation_classification_graph
+    long_term_classification_graph, create_activation_classification_graph
 
 
 def test_network_convNet_with_activation(examples_datasets, labels_datasets, convNet,
@@ -38,7 +38,7 @@ def test_network_convNet_with_activation(examples_datasets, labels_datasets, con
                 best_weights = torch.load(
                     path_weights + "/participant_%d/best_weights_participant_normal_training_%d.pt" %
                     (participant_index, int(session_index/2)))  # Because there is 2 evaluation sessions per training
-            model.load_state_dict(best_weights)
+            model.load_state_dict(best_weights, strict=False)
             predictions_evaluation_session = []
             ground_truth_evaluation_session = []
             activation_evaluation_session = []
@@ -121,6 +121,7 @@ if __name__ == '__main__':
     highest_activations = dataset_training["highest_activations"]
     print(highest_activations)
     path_weights = "../weights_full_training"
+
     test_network_convNet_with_activation(examples_datasets=examples_datasets_evaluation,
                                          labels_datasets=labels_datasets_evaluation, convNet=rawConvNet,
                                          highest_activation_participants_gestures=highest_activations,
@@ -143,24 +144,25 @@ if __name__ == '__main__':
                "Pronation", "Power Grip", "Open Hand", "Chuck Grip", "Pinch Grip"]
 
     font_size = 24
-    sns.set(style='dark')
-
+    sns.set(style='whitegrid')
+    '''
     create_activation_classification_graph(predictions=predictions_no_retraining,
-                                           ground_truth=ground_truths_no_retraining,
+                                           ground_truths=ground_truths_no_retraining,
                                            activations_examples=activations_no_retraining, number_of_bins=9)
+                                           '''
     create_activation_classification_graph(predictions=predictions_WITH_retraining,
-                                           ground_truth=ground_truths_WITH_retraining,
-                                           activations_examples=activations_WITH_retraining, number_of_bins=9)
-
-    create_long_term_classification_graph(ground_truths_no_retraining=ground_truths_no_retraining,
-                                          predictions_no_retraining=predictions_no_retraining,
-                                          ground_truths_WITH_retraining=ground_truths_WITH_retraining,
-                                          predictions_WITH_retraining=predictions_WITH_retraining,
+                                           ground_truths=ground_truths_WITH_retraining,
+                                           activations_examples=activations_WITH_retraining, number_of_bins=5)
+    '''
+    create_long_term_classification_graph(ground_truths_first_algo=ground_truths_no_retraining,
+                                          predictions_first_algo=predictions_no_retraining,
+                                          ground_truths_second_algo=ground_truths_WITH_retraining,
+                                          predictions_second_algo=predictions_WITH_retraining,
                                           timestamps=evaluation_datetimes)
 
     fig, axs = create_confusion_matrix(ground_truth=ground_truths_no_retraining, predictions=predictions_no_retraining,
                                        class_names=classes, title="ConvNet standard training", fontsize=font_size)
-
+    '''
     # fig.suptitle("ConvNet using AdaDANN training", fontsize=28)
     mng_no_retraining = plt.get_current_fig_manager()
     # mng.window.state('zoomed')  # works fine on Windows!

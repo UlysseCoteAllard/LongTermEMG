@@ -364,36 +364,37 @@ def read_data_training(path, features_set_name, feature_set_function, number_of_
 
 
 if __name__ == '__main__':
-
+    '''
     features_set_name = "TD_features_set_"
     feature_set_function = feature_extraction.get_TD_features_set
     read_data_training(path="../../datasets/longterm_dataset_3DC", features_set_name=features_set_name,
                        feature_set_function=feature_set_function)
-    
+
     features_set_name = "EnhancedTD_features_set"
     feature_set_function = feature_extraction.get_enhancedTD_feature_set
     read_data_training(path="../../datasets/longterm_dataset_3DC", features_set_name=features_set_name,
                        feature_set_function=feature_set_function)
-    
+
     features_set_name = "Sampen_features_set"
     feature_set_function = feature_extraction.get_Sampen_pipeline_features_set
     read_data_training(path="../../datasets/longterm_dataset_3DC", features_set_name=features_set_name,
                        feature_set_function=feature_set_function)
-    
+
     features_set_name = "LSF9_features_set"
     feature_set_function = feature_extraction.get_LSF9
     read_data_training(path="../../datasets/longterm_dataset_3DC", features_set_name=features_set_name,
                        feature_set_function=feature_set_function)
-    
+
     features_set_name = "TDPSD_features_set"
     feature_set_function = feature_extraction.get_TDPSD
     read_data_training(path="../../datasets/longterm_dataset_3DC", features_set_name=features_set_name,
                        feature_set_function=feature_set_function)
-    
+
     features_set_name = "NinaPro_features_set"
     feature_set_function = feature_extraction.get_NinaPro_best
     read_data_training(path="../../datasets/longterm_dataset_3DC", features_set_name=features_set_name,
                        feature_set_function=feature_set_function)
+    '''
 
     features_set_name = "TSD_features_set"
     feature_set_function = feature_extraction.getTSD

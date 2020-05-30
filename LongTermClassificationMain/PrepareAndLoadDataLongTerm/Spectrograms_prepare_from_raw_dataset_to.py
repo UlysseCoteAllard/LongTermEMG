@@ -3,8 +3,10 @@ import pickle
 import numpy as np
 from datetime import datetime, timedelta
 
-from LongTermClassificationMain.PrepareAndLoadDataLongTerm.prepare_dataset_utils import butter_bandpass_filter, \
+from LongTermClassificationMain.PrepareAndLoadDataLongTerm.prepare_dataset_utils import butter_bandpass_filter,\
     show_filtered_signal, load_timestamps_from_participant, get_angles_from_positions_3d_arm
+from LongTermClassificationMain.PrepareAndLoadDataLongTerm.calculate_spectrograms import calculate_single_example
+
 
 list_participant_training_1_to_skip = ["Participant0/Training1", "Participant0/Evaluation2", "Participant0/Evaluation3",
                                        "Participant2/Training1", "Participant2/Evaluation2", "Participant2/Evaluation3"]
@@ -24,7 +26,7 @@ def get_highest_average_emg_window(emg_signal, window_for_moving_average):
             example_filtered = []
             for channel in example:
                 channel_filtered = butter_bandpass_filter(channel, lowcut=20, highcut=495, fs=1000, order=4)
-                # show_filtered_signal(channel, channel_filtered)
+                #show_filtered_signal(channel, channel_filtered)
                 example_filtered.append(channel_filtered)
             average = np.mean(np.abs(example_filtered))
             if average > max_average:
@@ -51,11 +53,12 @@ def format_examples(emg_examples, window_size=150, size_non_overlap=50):
             example_filtered = []
             for channel in example:
                 channel_filtered = butter_bandpass_filter(channel, lowcut=20, highcut=495, fs=1000, order=4)
-                # show_filtered_signal(channel, channel_filtered)
+                #show_filtered_signal(channel, channel_filtered)
                 example_filtered.append(channel_filtered)
+            spectrogram = calculate_single_example(example_filtered, frequency=1000)
             # Add the filtered example to the list of examples to return and transpose the example array again to go
             # back to TIME x CHANNEL
-            examples_formatted.append(example_filtered)
+            examples_formatted.append(spectrogram)
             example = example.transpose()
             # Remove part of the data of the example according to the size_non_overlap variable
             example = example[size_non_overlap:]
@@ -81,15 +84,17 @@ def format_examples_and_timestamps(emg_examples, timestamps, window_size=150, si
             example_filtered = []
             for channel in example:
                 channel_filtered = butter_bandpass_filter(channel, lowcut=20, highcut=495, fs=1000, order=4)
-                # show_filtered_signal(channel, channel_filtered)
+                #show_filtered_signal(channel, channel_filtered)
                 example_filtered.append(channel_filtered)
+            spectrogram = calculate_single_example(example_filtered, frequency=1000)
+            #print("SHAPE SPECTROGRAM: ", np.shape(spectrogram))
             # Add the filtered example to the list of examples to return and transpose the example array again to go
             # back to TIME x CHANNEL
-            examples_formatted.append(example_filtered)
+            examples_formatted.append(spectrogram)
             example = example.transpose()
 
             # Add the timestamp of this example as the timestamp of the middle of the current timestamp example
-            examples_formatted_timestamps.extend(example_timestamp[int(len(example_timestamp) / 2)])
+            examples_formatted_timestamps.extend(example_timestamp[int(len(example_timestamp)/2)])
 
             # Remove part of the data of the example according to the size_non_overlap variable
             example = example[size_non_overlap:]
@@ -106,7 +111,7 @@ def read_files_to_format_evaluation_session(path_folder_examples, window_size, s
     if len(os.listdir(path_folder_examples)) == 0:
         return [], [], []
     print(os.listdir(path_folder_examples))
-    with open(path_folder_examples + "/3dc_EMG_gesture.txt") as emgFile, \
+    with open(path_folder_examples + "/3dc_EMG_gesture.txt") as emgFile,\
             open(path_folder_examples + "/3dc_EMG_Timestamp_gesture.txt") as timestampFile:
         examples_to_format, timestamps = [], []
         for line_emg in emgFile:
@@ -121,7 +126,7 @@ def read_files_to_format_evaluation_session(path_folder_examples, window_size, s
         # In the unity software, the EMG class was activated before the EMG armband was actually recording, making it
         # so that timestamps where registered with no actual emg link (this happen at the beginning). Remove these
         # timestamps at the beginning so that both array matches
-        timestamps = timestamps[len(timestamps) - len(examples_to_format):]
+        timestamps = timestamps[len(timestamps)-len(examples_to_format):]
         examples, timestamps_from_examples = format_examples_and_timestamps(examples_to_format, timestamps=timestamps,
                                                                             window_size=window_size,
                                                                             size_non_overlap=size_non_overlap)
@@ -147,9 +152,9 @@ def read_files_to_format_evaluation_session(path_folder_examples, window_size, s
             current_time_arm = datetime_arm_original + timedelta(
                 microseconds=(int(angles_arm[index_arm_angles]['timestamp']) - first_timestamp))
             if current_time_arm > timestamps_from_examples[index_timestamp_example]:
-                current_time_difference = current_time_arm - timestamps_from_examples[index_timestamp_example]
+                current_time_difference = current_time_arm-timestamps_from_examples[index_timestamp_example]
             else:
-                current_time_difference = timestamps_from_examples[index_timestamp_example] - current_time_arm
+                current_time_difference = timestamps_from_examples[index_timestamp_example]-current_time_arm
             if current_time_arm >= timestamps_from_examples[index_timestamp_example]:
                 if previous_time_difference < current_time_difference:
                     index_arm_angles = previous_time_arm_index
@@ -159,7 +164,7 @@ def read_files_to_format_evaluation_session(path_folder_examples, window_size, s
                 previous_time_arm = current_time_arm
                 previous_time_difference = current_time_difference
                 previous_time_arm_index = index_arm_angles
-                if index_arm_angles + 1 < len(angles_arm):
+                if index_arm_angles+1 < len(angles_arm):
                     index_arm_angles += 1
                 else:
                     break
@@ -167,9 +172,9 @@ def read_files_to_format_evaluation_session(path_folder_examples, window_size, s
                              "timestamp": current_time_arm}
 
         if current_time_arm > timestamps_from_examples[index_timestamp_example]:
-            time_difference = current_time_arm - timestamps_from_examples[index_timestamp_example]
+            time_difference = current_time_arm-timestamps_from_examples[index_timestamp_example]
         else:
-            time_difference = timestamps_from_examples[index_timestamp_example] - current_time_arm
+            time_difference = timestamps_from_examples[index_timestamp_example]-current_time_arm
         if biggest_time_difference < time_difference:
             biggest_time_difference = time_difference
 
@@ -179,7 +184,7 @@ def read_files_to_format_evaluation_session(path_folder_examples, window_size, s
           biggest_time_difference)
 
     timestamps_for_gestures, gestures_array = [], []
-    with open(path_folder_examples + "/timestamps.txt") as timestamps_gestures, \
+    with open(path_folder_examples + "/timestamps.txt") as timestamps_gestures,\
             open(path_folder_examples + "/gesture_asked.txt") as gestures:
         for gesture, timestamp_gesture in zip(gestures, timestamps_gestures):
             gestures_array.append(np.float32(gesture.strip()))
@@ -188,8 +193,8 @@ def read_files_to_format_evaluation_session(path_folder_examples, window_size, s
     "Build the labels according to the timestamps"
     current_gesture_index = -1
     for example, timestamp in zip(examples, timestamps_from_examples):
-        if current_gesture_index + 1 < len(timestamps_for_gestures) and \
-                timestamps_for_gestures[current_gesture_index + 1] < timestamp:
+        if current_gesture_index+1 < len(timestamps_for_gestures) and \
+                timestamps_for_gestures[current_gesture_index+1] < timestamp:
             current_gesture_index += 1
         if current_gesture_index > -1:
             examples_evaluation.append(example)
@@ -233,6 +238,7 @@ def read_files_to_format_training_session(path_folder_examples, number_of_cycles
                                                  size_non_overlap=size_non_overlap)
             examples.extend(examples_formatted)
             labels.extend(np.ones(len(examples_formatted)) * gesture_index)
+        print("SHAPE SESSION EXAMPLES: ", np.shape(examples))
         examples_training.append(examples)
         labels_training.append(labels)
 
@@ -265,7 +271,7 @@ def get_data_and_process_it_from_file(path, number_of_gestures=11, number_of_cyc
 
                 if "Training" in session_directory:
                     path_folder_examples = path + "/" + folder_participant + "/" + session_directory + "/EMG"
-                    examples_training, labels_training, highest_activation_per_gesture = \
+                    examples_training, labels_training, highest_activation_per_gesture =\
                         read_files_to_format_training_session(path_folder_examples, number_of_cycles,
                                                               number_of_gestures, window_size, size_non_overlap)
                     if len(examples_training) > 0:
@@ -281,7 +287,7 @@ def get_data_and_process_it_from_file(path, number_of_gestures=11, number_of_cyc
 
                 if "Evaluation" in session_directory:
                     path_folder_examples = path + "/" + folder_participant + "/" + session_directory
-                    examples_evaluation, labels_evaluation, timestamps_emg, \
+                    examples_evaluation, labels_evaluation, timestamps_emg,\
                     angles_with_timestamps = read_files_to_format_evaluation_session(
                         path_folder_examples, window_size, size_non_overlap)
                     if len(examples_evaluation) > 0:
@@ -340,9 +346,9 @@ def read_data_training(path, number_of_gestures=11, number_of_cycles=4, window_s
     evaluation_session_dataset_dictionnary["evaluation_datetimes"] = dataset_dictionnary["evaluation_datetimes"]
     evaluation_session_dataset_dictionnary["angles_and_timestamps"] = dataset_dictionnary["angles_and_timestamps"]
 
-    with open("../Processed_datasets/LongTermDataset_training_session.pickle", 'wb') as f:
+    with open("../Processed_datasets/Spectrograms_training_session.pickle", 'wb') as f:
         pickle.dump(training_session_dataset_dictionnary, f, pickle.HIGHEST_PROTOCOL)
-    with open("../Processed_datasets/LongTermDataset_evaluation_session.pickle", 'wb') as f:
+    with open("../Processed_datasets/Spectrograms_evaluation_session.pickle", 'wb') as f:
         pickle.dump(evaluation_session_dataset_dictionnary, f, pickle.HIGHEST_PROTOCOL)
 
 

@@ -3,12 +3,12 @@ Implementation taken from: https://github.com/locuslab/TCN and modified to work 
 """
 import numpy as np
 
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils import weight_norm
 
 from LongTermClassificationMain.Models.model_utils import ReversalGradientLayerF
+
 
 class Chomp2d(nn.Module):
     def __init__(self, chomp_size):
@@ -35,7 +35,6 @@ class TemporalBlock(nn.Module):
         self.relu = nn.LeakyReLU(negative_slope=0.1, inplace=True)
         self.init_weights()
 
-
     def init_weights(self):
         self.conv1.weight.data.normal_(0, 0.01)
 
@@ -53,19 +52,36 @@ class TemporalConvNet(nn.Module):
         self._kernel_sizes = kernel_size
         for i in range(num_levels):
             dilation_size = 2 ** i
-            in_channels = input_channel if i == 0 else num_kernels[i-1]
+            in_channels = input_channel if i == 0 else num_kernels[i - 1]
             out_channels = num_kernels[i]
 
             layers.append(TemporalBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation_size,
-                                     padding=(0, (kernel_size[1]-1) * dilation_size), dropout=dropout))
+                                        padding=(0, (kernel_size[1] - 1) * dilation_size), dropout=dropout))
 
         self._network_TCN = nn.ModuleList(layers)
         self._output = nn.Linear(num_kernels[-1], number_of_class)
         self._output_discriminator = nn.Linear(num_kernels[-1], 2)  # Two domains: Source and Target
-        self._output_shuffled = nn.Linear(num_kernels[-1], 5)  # 5 Possible shuffle (including no shuffle)
-        self._output_time_swapped = nn.Linear(num_kernels[-1], 2)  # 2 Possible swap (including no swap)
         print(self)
         print("Number Parameters: ", self.get_n_params())
+
+    def stop_all_gradients(self):
+        modules = self._modules
+        for key in modules:
+            if key == "_network_TCN":
+                print(modules[key])
+                for temporal_block in modules[key]:
+                    temporal_block_dict = temporal_block._modules
+                    for layer_key in temporal_block_dict:
+                        print(temporal_block_dict[layer_key])
+                        if isinstance(temporal_block_dict[layer_key], nn.Sequential):
+                            for layer_sequence in temporal_block_dict[layer_key]:
+                                for param in layer_sequence.parameters():
+                                    param.requires_grad = False
+                        for param in temporal_block_dict[layer_key].parameters():
+                            param.requires_grad = False
+            else:
+                for param in modules[key].parameters():
+                    param.requires_grad = False
 
     def stop_gradient_except_for_batch_norm(self):
         modules = self._modules
@@ -92,6 +108,10 @@ class TemporalConvNet(nn.Module):
         number_params = sum([np.prod(p.size()) for p in model_parameters])
         return number_params
 
+    def apply_dropout(self, module):
+        if type(module) == nn.Dropout2d or type(module) == nn.Dropout:
+            module.train()
+
     def forward(self, x, get_features=False, get_all_tasks_output=False, lambda_value=1.):
         for i, layer in enumerate(self._network_TCN):
             x = layer(x)
@@ -106,10 +126,6 @@ class TemporalConvNet(nn.Module):
             reversed_layer = ReversalGradientLayerF.grad_reverse(features_extracted, lambda_value)
             output_domain = self._output_discriminator(reversed_layer)
 
-            output_shuffle = self._output_shuffled(features_extracted)
-
-            output_time_swapped = self._output_time_swapped(features_extracted)
-
-            return output, output_domain, output_shuffle, output_time_swapped
+            return output, output_domain
         else:
             return output

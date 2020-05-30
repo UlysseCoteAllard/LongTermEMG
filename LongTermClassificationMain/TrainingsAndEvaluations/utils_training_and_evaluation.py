@@ -4,13 +4,14 @@ import seaborn as sns
 from datetime import timedelta
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from statistics import mean, stdev
 from matplotlib.lines import Line2D
 from mpl_toolkits.mplot3d import Axes3D
 
 from sklearn.metrics import confusion_matrix as confusion_matrix_function
 
 
-# Skipping 30 examples is equivalent in skipping the first 1 seconds as the armband is candenced at 1000Hz
+# Skipping 30 examples is equivalent in skipping the first 1.5 seconds as the armband is cadenced at 1000Hz
 def remove_transition_period_evaluation(ground_truths, predictions, third_array=None,
                                         number_of_examples_to_skip_after_change=30):
     number_of_examples_skipped = 0
@@ -26,7 +27,6 @@ def remove_transition_period_evaluation(ground_truths, predictions, third_array=
                 if stop_adding is False:
                     if ground_truth == last_label:
                         session_index_without_transition.append(index_ground_truth)
-                        number_of_examples_skipped += 1
                     else:
                         stop_adding = True
                         last_label = ground_truth
@@ -42,7 +42,6 @@ def remove_transition_period_evaluation(ground_truths, predictions, third_array=
             participant_index_without_transition.append(session_index_without_transition)
         stop_adding = False
         index_without_transition.append(participant_index_without_transition)
-
 
     if third_array is None:
         ground_truth_without_transition = []
@@ -63,7 +62,7 @@ def remove_transition_period_evaluation(ground_truths, predictions, third_array=
         ground_truth_without_transition = []
         predictions_without_transition = []
         third_array_without_transition = []
-        for participant_index_to_keep, participant_ground_truths, participant_predictions, participant_third_array in\
+        for participant_index_to_keep, participant_ground_truths, participant_predictions, participant_third_array in \
                 zip(index_without_transition, ground_truths, predictions, third_array):
             participant_ground_truth_without_transition = []
             participant_predictions_without_transition = []
@@ -82,7 +81,7 @@ def remove_transition_period_evaluation(ground_truths, predictions, third_array=
         return ground_truth_without_transition, predictions_without_transition, third_array_without_transition
 
 
-# Skipping 20 examples is equivalent in skipping the first 1 seconds as the armband is candenced at 1000Hz
+# Skipping 30 examples is equivalent in skipping the first 1.5 seconds as the armband is candenced at 1000Hz
 def remove_transition_period_training(ground_truths, predictions, third_array=None,
                                       number_of_examples_to_skip_after_change=30):
     number_of_examples_skipped = 0
@@ -123,7 +122,7 @@ def remove_transition_period_training(ground_truths, predictions, third_array=No
         ground_truth_without_transition = []
         predictions_without_transition = []
         third_array_without_transition = []
-        for participant_index_to_keep, participant_ground_truths, participant_predictions, participant_third_array in\
+        for participant_index_to_keep, participant_ground_truths, participant_predictions, participant_third_array in \
                 zip(index_without_transition, ground_truths, predictions, third_array):
             ground_truth_without_transition.append(np.array(participant_ground_truths)[participant_index_to_keep])
             predictions_without_transition.append(np.array(participant_predictions)[participant_index_to_keep])
@@ -170,7 +169,7 @@ def create_confusion_matrix(ground_truth, predictions, class_names, fontsize=24,
                                                             np.ravel(np.array(predictions)))
 
     if normalize:
-        confusion_matrix_calculated = confusion_matrix_calculated.astype('float') /\
+        confusion_matrix_calculated = confusion_matrix_calculated.astype('float') / \
                                       confusion_matrix_calculated.sum(axis=1)[:, np.newaxis]
         fmt = '.2f'
         print("Normalized confusion matrix")
@@ -260,33 +259,42 @@ def get_accuracy_in_respect_to_angles(predictions, ground_truth, angles, pitch_b
     return accuracies_per_participants, bins_pitch[1], max_pitch
 
 
-def create_angles_classification_graph(predictions, ground_truth, angles, pitch_bins=6, yaw_bins=12):
-    print(ground_truth)
-    predictions, ground_truth, angles = remove_transition_period_evaluation(predictions=predictions,
-                                                                            ground_truths=ground_truth,
-                                                                            third_array=angles)
-    accuracies_per_participants, min_pitch, max_pitch = get_accuracy_in_respect_to_angles(predictions, ground_truth,
+def create_angles_classification_graph(predictions, ground_truths, angles, pitch_bins=5, yaw_bins=12):
+    print(ground_truths)
+    predictions, ground_truths, angles = remove_transition_period_evaluation(predictions=predictions,
+                                                                             ground_truths=ground_truths,
+                                                                             third_array=angles,
+                                                                             number_of_examples_to_skip_after_change=30)
+    accuracies_per_participants, min_pitch, max_pitch = get_accuracy_in_respect_to_angles(predictions, ground_truths,
                                                                                           angles, pitch_bins=pitch_bins,
-                                                                                          yaw_bins=yaw_bins)
+                                                                                          yaw_bins=yaw_bins,
+                                                                                          minimum_number_of_examples=
+                                                                                          600)
     print(np.swapaxes(accuracies_per_participants, 1, 0))
     accuracies_per_participants = accuracies_per_participants[1:]
     sns.set()
 
     # Compute areas and colors
     sns.set()
+
+    plt.rcParams.update({'font.size': 24})
     fig = plt.figure()
     ax = Axes3D(fig)
     ax = plt.subplot(111, polar=True)
 
-    rad = np.linspace(min_pitch, max_pitch, pitch_bins-1)
-    a = np.linspace((-70.*np.pi)/180., (70.*np.pi)/180., yaw_bins)
+    rad = np.linspace(min_pitch, max_pitch, pitch_bins - 1)
+    a = np.linspace((-70. * np.pi) / 180., (70. * np.pi) / 180., yaw_bins)
     r, th = np.meshgrid(rad, a)
     print(np.shape(r), "   ", np.shape(th), "   ", np.shape(accuracies_per_participants))
 
-    new_cmap = truncate_colormap(cmap=plt.get_cmap("magma"), minval=np.nanmin(accuracies_per_participants),
-                                 maxval=np.nanmax(accuracies_per_participants))
+    new_cmap = truncate_colormap(cmap=plt.get_cmap("magma"), minval=.2,
+                                 maxval=0.8)
 
-    ax.pcolormesh(th, r, np.swapaxes(accuracies_per_participants, 1, 0), cmap=new_cmap)
+    # new_cmap = truncate_colormap(cmap=plt.get_cmap("magma"), minval=np.nanmin(accuracies_per_participants),
+    #                             maxval=np.nanmax(accuracies_per_participants))
+
+    p = ax.pcolormesh(th, r, np.swapaxes(accuracies_per_participants, 1, 0), cmap=new_cmap)
+    show_values(p)
     ax.plot(a, r, ls='none', color='k')
     ax.grid()
 
@@ -295,19 +303,44 @@ def create_angles_classification_graph(predictions, ground_truth, angles, pitch_
     ax.set_thetamin(-70)
     ax.set_thetamax(70)
 
+    plt.savefig("angles_classification.svg", transparent=True)
+
+    plt.show()
+    plt.rcParams.update({'font.size': 48})
+    # create dummy invisible image
+    # (use the colormap you want to have on the colorbar)
+    img = plt.imshow(np.array([[np.nanmin(accuracies_per_participants), np.nanmax(accuracies_per_participants)]]),
+                     cmap=new_cmap)
+    img.set_visible(False)
+
+    plt.colorbar(orientation="vertical")
     plt.show()
 
 
-def create_activation_classification_graph(predictions, ground_truth, activations_examples, number_of_bins=10):
-    predictions, ground_truth, activations_examples = remove_transition_period_evaluation(predictions=predictions,
-                                                                                          ground_truths=ground_truth,
-                                                                                          third_array=
-                                                                                          activations_examples)
+def show_values(pc, fmt="%.2f", **kw):
+    pc.update_scalarmappable()
+    ax = pc.axes
+    for p, color, value in zip(pc.get_paths(), pc.get_facecolors(), pc.get_array()):
+        x, y = p.vertices[:-2, :].mean(0)
+        if np.all(color[:3] > 0.5):
+            color = (0.0, 0.0, 0.0)
+        else:
+            color = (1.0, 1.0, 1.0)
+        if value != float("nan"):
+            ax.text(x, y, fmt % value, ha="center", va="center", color=color, **kw)
+
+
+def create_activation_classification_graph(predictions, ground_truths, activations_examples, number_of_bins=10):
+    predictions, ground_truths, activations_examples = remove_transition_period_evaluation(predictions=predictions,
+                                                                                           ground_truths=ground_truths,
+                                                                                           third_array=
+                                                                                           activations_examples)
     bins_per_participants = []
     accuracies_per_participants = []
+    amount_per_participants_per_bins = []
     participants = []
     for index_participant, (participant_ground_truths, participant_predictions, participant_activation_examples) in \
-            enumerate(zip(ground_truth, predictions, activations_examples)):
+            enumerate(zip(ground_truths, predictions, activations_examples)):
         prediction_and_ground_truth_align = []
         activation_percentage = []
         for ground_truths_seance, predictions_seance, activation_seances in zip(
@@ -320,140 +353,333 @@ def create_activation_classification_graph(predictions, ground_truth, activation
             activation_percentage.extend(np.array(activation_seances)[index_without_neutral])
 
         good_prediction_per_bin = np.zeros((number_of_bins, 0)).tolist()
-        bins = np.linspace(0, 1., number_of_bins+1)
+        bins = np.linspace(0, 1., number_of_bins + 1)
         bins = bins[0:number_of_bins]
         for activation, prediction_alignement in zip(activation_percentage, prediction_and_ground_truth_align):
             for index, bin_for_histogram in reversed(list(enumerate(bins))):
-                if activation > bin_for_histogram:
+                if bin_for_histogram < activation:
                     good_prediction_per_bin[index] = np.append(good_prediction_per_bin[index], prediction_alignement)
                     break
 
         # Get accuracy per bin
         accuracies = []
+        amount_per_bin = []
         for bin_prediction_and_ground_truth in good_prediction_per_bin:
             print(np.shape(bin_prediction_and_ground_truth))
+            amount_per_bin.append(len(bin_prediction_and_ground_truth))
             accuracies.append(np.mean(bin_prediction_and_ground_truth))
         bins_per_participants.extend(bins)
         accuracies_per_participants.extend(accuracies)
-        participants.extend(index_participant*np.ones(number_of_bins))
-    sns.set(font_scale=3.5)
-    df = pd.DataFrame({"Accuracy": accuracies_per_participants, "Activation Percentage of Max": bins_per_participants,
-                       "Participant": participants})
-    print(df)
-    sns.barplot(x="Activation Percentage of Max", y="Accuracy", data=df)
+        amount_per_participants_per_bins.append(amount_per_bin)
+        print(accuracies)
+        participants.extend(index_participant * np.ones(number_of_bins))
 
+    print(np.shape(amount_per_participants_per_bins))
+    print("NUMBER OF EXAMPLES PER BIN: ", np.sum(amount_per_participants_per_bins, axis=0))
+
+    sns.set(font_scale=3.5, style='whitegrid')
+    df = pd.DataFrame({"Accuracy": accuracies_per_participants,
+                       "Percentage of Maximum Activation": bins_per_participants, "Participant": participants})
+
+    g = sns.barplot(x="Percentage of Maximum Activation", y="Accuracy", data=df, errwidth=7)
+    xlabels = []
+    for i in range(len(g.get_xticklabels())):
+        if i < len(g.get_xticklabels()) - 1:
+            xlabels.append('[{:,.2f}, {:,.2f}['.format(float(g.get_xticklabels()[i].get_text()),
+                                                       float(g.get_xticklabels()[i + 1].get_text())))
+        else:
+            xlabels.append('[{:,.2f}, 1.00]'.format(float(g.get_xticklabels()[i].get_text())))
+    g.set_xticklabels(xlabels)
+    sns.despine()
     plt.show()
 
 
-def create_long_term_classification_graph(ground_truths_no_retraining,
-                                          predictions_no_retraining,
-                                          ground_truths_WITH_retraining,
-                                          predictions_WITH_retraining, timestamps, number_of_seances_to_consider=2):
-    print(timestamps)
-    print(np.shape(timestamps[0]))
+def long_term_pointplot(ground_truths_in_array, predictions_in_array, text_for_legend_in_array, timestamps,
+                        number_of_seances_to_consider, remove_transition_evaluation=False,
+                        only_every_second_session=False):
     time_distance_participants_in_hours = []
     for participant_times in timestamps:
         time_distance = []
         for i in range(0, len(participant_times)):
-            time_distance.append((participant_times[i] - participant_times[0])/timedelta(days=1))
+            if only_every_second_session and i % 2 != 0:
+                time_distance.append((participant_times[i] - participant_times[1]) / timedelta(days=1))
+            elif only_every_second_session is False:
+                time_distance.append((participant_times[i] - participant_times[0]) / timedelta(days=1))
         time_distance_participants_in_hours.append(time_distance)
-    print(time_distance_participants_in_hours)
-    """
-    print(np.shape(ground_truths))
-    print(np.shape(ground_truths[0]))
-    print(np.shape(ground_truths[0][0]))
-    """
+
+    cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
     accuracies = []
-    recalibration_or_not = []
+    algorithm_index_array = []
     time_hours = []
     participant_indexes = []
-    participant_index = 0
-    for participant_ground_truths, participant_predictions, participant_timestamps_in_hours in zip(
-            ground_truths_no_retraining, predictions_no_retraining, time_distance_participants_in_hours):
-        seance_index = 0
-        for ground_truths_seance, predictions_seance, time_distance_seance in zip(
-                participant_ground_truths, participant_predictions, participant_timestamps_in_hours):
-            if seance_index > number_of_seances_to_consider:
-                break
-            print("TIME: ", time_distance_seance)
-            print("ACCURACY: ", np.mean(np.array(ground_truths_seance) == np.array(predictions_seance)) * 100.)
-            time_hours.append(time_distance_seance)
-            accuracies.append(np.mean(np.array(ground_truths_seance) == np.array(predictions_seance)) * 100.)
-            participant_indexes.append(participant_index)
-            recalibration_or_not.append("No")
-            seance_index += 1
-        participant_index += 1
+    seance_index_array = []
 
-    participant_index = 0
-    for participant_ground_truths, participant_predictions, participant_timestamps_in_hours in zip(
-            ground_truths_WITH_retraining, predictions_WITH_retraining, time_distance_participants_in_hours):
-        seance_index = 0
-        for ground_truths_seance, predictions_seance, time_distance_seance in zip(
-                participant_ground_truths, participant_predictions, participant_timestamps_in_hours):
-            if seance_index > number_of_seances_to_consider:
-                break
-            print("TIME: ", time_distance_seance, " SEANCE: ", seance_index)
-            print("ACCURACY: ", np.mean(np.array(ground_truths_seance) == np.array(predictions_seance)) * 100.)
-            time_hours.append(time_distance_seance)
-            accuracies.append(np.mean(np.array(ground_truths_seance) == np.array(predictions_seance)) * 100.)
-            participant_indexes.append(participant_index)
-            recalibration_or_not.append("Yes")
-            seance_index += 1
-        participant_index += 1
+    for index, (ground_truths, predictions) in enumerate(zip(ground_truths_in_array, predictions_in_array)):
+        if remove_transition_evaluation:
+            predictions, ground_truths = remove_transition_period_evaluation(predictions=predictions,
+                                                                             ground_truths=ground_truths)
+        participant_index = 0
+        for participant_ground_truths, participant_predictions, participant_timestamps_in_hours in zip(
+                ground_truths, predictions, time_distance_participants_in_hours):
+            seance_index = 0
+            for ground_truths_seance, predictions_seance, time_distance_seance in zip(
+                    participant_ground_truths, participant_predictions, participant_timestamps_in_hours):
+                if seance_index > number_of_seances_to_consider:
+                    break
+
+                print("TIME: ", time_distance_seance)
+                print(ground_truths_seance)
+                print(predictions_seance)
+                print("ACCURACY: ", np.mean(np.array(ground_truths_seance) == np.array(predictions_seance)) * 100.)
+
+                time_hours.append(time_distance_seance)
+                accuracies.append(np.mean(np.array(ground_truths_seance) == np.array(predictions_seance)) * 100.)
+                participant_indexes.append(participant_index)
+                algorithm_index_array.append(index)
+                seance_index_array.append(seance_index)
+                seance_index += 1
+            participant_index += 1
 
     df = pd.DataFrame({"Time (days)": time_hours, "Accuracy": accuracies, "Participant": participant_indexes,
-                       "Recalibration": recalibration_or_not})
+                       "Algorithm": algorithm_index_array, "Seance": seance_index_array})
+    average_time_session = []
+    for seance_j in range(0, number_of_seances_to_consider + 1):
+        time_session_j = df['Time (days)'][(df['Algorithm'] == 0) & (df['Seance'] == seance_j)]
+        average_time_session.append(np.mean(time_session_j))
+    print("Average time seance: ", average_time_session)
+    average_time_session = [0.0, 6.7, 13.2, 18.6]
+    for seance_index in range(len(seance_index_array)):
+        seance_index_array[seance_index] = np.round(average_time_session[seance_index_array[seance_index]], decimals=1)
+    df = pd.DataFrame({"Time (days)": seance_index_array, "Accuracy": accuracies, "Participant": participant_indexes,
+                       "Algorithm": algorithm_index_array})
 
-    accuracy_mean_first_session = np.mean(df['Accuracy'][df['Time (days)'] == 0.0])
-    print("MEAN FIRST SESSION: ", accuracy_mean_first_session)
-    #df['Accuracy'][df['Time (days)'] == 0.0] = accuracy_mean_first_session
+    sns.set(font_scale=3, style="whitegrid")
+    sns.set_context(font_scale=4, rc={"lines.linewidth": 4})
+    print(df["Algorithm"])
+    linestyles = ['-', '--', '-.', (0, (1, 1)), (0, (3, 5, 1, 5)), (0, (5, 10)), (0, (5, 5)), (0, (5, 1))]
+    markers = ['o', 's', "^", "*", "h", "p", "X"]
+    #g = sns.pointplot(x="Time (days)", y="Accuracy", data=df, hue="Algorithm", s=700, linestyles=linestyles,
+    #                  palette=cycle[0:len(ground_truths_in_array)], markers=markers[0:len(ground_truths_in_array)],
+    #                  dodge=True, capsize=.05, legend_out=True, ci="sd")
+    '''
+    g = sns.barplot(x="Time (days)", y="Accuracy", data=df, hue="Algorithm",
+                      palette=cycle[0:len(ground_truths_in_array)],
+                      dodge=True, capsize=.05, ci="sd")
+    '''
+    cycle = [cycle[i] for i in [0, 2, 3]]
+    g = sns.barplot(x="Time (days)", y="Accuracy", data=df, hue="Algorithm",
+                      palette=cycle,
+                      dodge=True, capsize=.05, ci="sd")
+    # Put the legend out of the figure
+    # plt.legend(bbox_to_anchor=(.9, 1), loc=2, borderaxespad=0.)
+    leg = g.axes.get_legend()
+    text_legend_array = []
+    for i, text_legend in enumerate(text_for_legend_in_array):
+        text_legend_array.append(text_legend)
+    for t, l in zip(leg.texts, text_legend_array):
+        t.set_text(l)
 
-    print(df)
-
-    print(np.polyfit(time_hours, accuracies, deg=1))
-    time_hours_no_retraining = df['Time (days)'][df['Recalibration'] == 'No']
-    time_hours_retraining = df['Time (days)'][df['Recalibration'] == 'Yes']
-    accuracies_no_retraining = df['Accuracy'][df['Recalibration'] == 'No']
-    accuracies_hours_retraining = df['Accuracy'][df['Recalibration'] == 'Yes']
-    import numpy.polynomial.polynomial as poly
-    linear_regression_no_retraining = polyfit_with_fixed_points(n=1, x=np.array(time_hours_no_retraining),
-                                                                y=np.array(accuracies_no_retraining),
-                                                                xf=np.array([0.0]),
-                                                                yf=np.array([accuracy_mean_first_session]))
-    linear_regression_retraining = polyfit_with_fixed_points(n=1, x=np.array(time_hours_retraining),
-                                                             y=np.array(accuracies_hours_retraining),
-                                                             xf=np.array([0.0]),
-                                                             yf=np.array([accuracy_mean_first_session]))
-
-    x_linear_regression = np.linspace(0., np.max(df['Time (days)']), 10)
-    y_regression_no_retraining = linear_regression_no_retraining[1]*x_linear_regression + \
-                                 linear_regression_no_retraining[0]
-
-    y_regression_retraining = linear_regression_retraining[1]*x_linear_regression + \
-                                 linear_regression_retraining[0]
-    sns.set(font_scale=3.5)
-    sns.scatterplot(x="Time (days)", y="Accuracy", data=df, hue="Recalibration", style="Recalibration", legend=False,
-                    s=100)
-    cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    sns.lineplot(x=x_linear_regression, y=y_regression_no_retraining, linewidth=3.5, color=cycle[0])
-    ax = sns.lineplot(x=x_linear_regression, y=y_regression_retraining, linewidth=3.5, color=cycle[1])
-
-    plt.legend(handles=[plt.plot([], ls="-", linewidth=3.5, color=cycle[0])[0], plt.plot([], ls="-", linewidth=3.5, color=cycle[1])[0]],
-               labels=["No retraining, y = %fx + %f" % (linear_regression_no_retraining[1],
-                                                        linear_regression_no_retraining[0]),
-                       "y = %fx + %f" % (linear_regression_retraining[1], linear_regression_retraining[0])],
-               loc="best")
+    sns.despine(left=True)
     plt.show()
 
-def polyfit_with_fixed_points(n, x, y, xf, yf) :
+
+def accuracy_vs_score_lmplot(ground_truths_in_array, predictions_in_array, scores_in_array,
+                             number_of_seances_to_consider):
+    accuracies = []
+    scores = []
+    participant_index = 0
+    for participant_ground_truths, participant_predictions, participant_scores in zip(
+            ground_truths_in_array, predictions_in_array, scores_in_array):
+        seance_index = 0
+        for ground_truths_seance, predictions_seance, score_seance in zip(
+                participant_ground_truths, participant_predictions, participant_scores):
+            if seance_index > number_of_seances_to_consider:
+                break
+            scores.append(score_seance)
+            accuracies.append(np.mean(np.array(ground_truths_seance) == np.array(predictions_seance)) * 100.)
+            seance_index += 1
+        participant_index += 1
+    df = pd.DataFrame({"Score": scores, "Accuracy": accuracies})
+    sns.set(font_scale=3, style="whitegrid")
+    sns.lmplot(y="Score", x="Accuracy", data=df, x_ci="sd", line_kws={'color': 'black', "linewidth": 12},
+               scatter_kws={"s": 700, 'color': 'black'})
+
+    print(df['Score'].corr(df['Accuracy']))
+
+    sns.despine(left=True)
+    plt.show()
+
+
+def long_term_classification_graph(ground_truths_in_array, predictions_in_array, text_for_legend_in_array, timestamps,
+                                   number_of_seances_to_consider, remove_transition_evaluation=False,
+                                   only_every_second_session=False):
+    time_distance_participants_in_hours = []
+    for participant_times in timestamps:
+        time_distance = []
+        for i in range(0, len(participant_times)):
+            if only_every_second_session and i % 2 != 0:
+                time_distance.append((participant_times[i] - participant_times[1]) / timedelta(days=1))
+            elif only_every_second_session is False:
+                time_distance.append((participant_times[i] - participant_times[0]) / timedelta(days=1))
+        time_distance_participants_in_hours.append(time_distance)
+
+    accuracies = []
+    algorithm_index_array = []
+    time_hours = []
+    participant_indexes = []
+    seance_index_array = []
+    cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    for index, (ground_truths, predictions) in enumerate(zip(ground_truths_in_array, predictions_in_array)):
+        if remove_transition_evaluation:
+            predictions, ground_truths = remove_transition_period_evaluation(predictions=predictions,
+                                                                             ground_truths=ground_truths)
+        participant_index = 0
+        for participant_ground_truths, participant_predictions, participant_timestamps_in_hours in zip(
+                ground_truths, predictions, time_distance_participants_in_hours):
+            seance_index = 0
+            for ground_truths_seance, predictions_seance, time_distance_seance in zip(
+                    participant_ground_truths, participant_predictions, participant_timestamps_in_hours):
+                if seance_index > number_of_seances_to_consider:
+                    break
+                '''
+                print("TIME: ", time_distance_seance)
+                print(ground_truths_seance)
+                print(predictions_seance)
+                print("ACCURACY: ", np.mean(np.array(ground_truths_seance) == np.array(predictions_seance)) * 100.)
+                '''
+                time_hours.append(time_distance_seance)
+                accuracies.append(np.mean(np.array(ground_truths_seance) == np.array(predictions_seance)) * 100.)
+                participant_indexes.append(participant_index)
+                algorithm_index_array.append(index)
+                seance_index_array.append(seance_index)
+                seance_index += 1
+            participant_index += 1
+
+    df = pd.DataFrame({"Time (days)": time_hours, "Accuracy": accuracies, "Participant": participant_indexes,
+                       "algorithm_index": algorithm_index_array, "Seance": seance_index_array})
+    accuracy_mean_first_session = np.mean(df['Accuracy'][df['Time (days)'] == 0.0])
+    print("MEAN FIRST SESSION: ", accuracy_mean_first_session)
+
+    sns.set(font_scale=3, style="whitegrid")
+    linestyles = ['-', '--', '-.', (0, (1, 1)), (0, (3, 5, 1, 5)), (0, (5, 10)), (0, (5, 5)), (0, (5, 1))]
+    markers = ['o', 'd', "^", "*", "h", "p", "X", "P"]
+    sns.scatterplot(x="Time (days)", y="Accuracy", data=df, hue="algorithm_index", style="algorithm_index",
+                    legend=False, s=700, palette=cycle[0:len(ground_truths_in_array)],
+                    markers=markers[0:len(ground_truths_in_array)])
+
+    text_legend_array = []
+    for i, text_legend in enumerate(text_for_legend_in_array):
+        time_hours = df['Time (days)'][df['algorithm_index'] == i]
+        accuracies = df['Accuracy'][df['algorithm_index'] == i]
+
+        for seance_i in range(number_of_seances_to_consider + 1):
+            get_statistics(df['Accuracy'][(df['algorithm_index'] == i) & (df['Seance'] == seance_i)], seance_i,
+                           algorithm_name=text_legend)
+
+        lin_regression = generate_linear_regression(X=time_hours, y=accuracies,
+                                                    mean_accuracy_first_session=accuracy_mean_first_session,
+                                                    color=cycle[i], linestyle=linestyles[i])
+        text_legend_array.append(text_legend + ", Regression slope: %.4f" % lin_regression[1])
+    '''
+    for algorithm_1 in range(len(text_for_legend_in_array)):
+        for algorithm_2 in range(algorithm_1+1, len(text_for_legend_in_array)):
+            if algorithm_1 != algorithm_2:
+                samples_d1 = []
+                samples_d2 = []
+                for seance_j in range(0, number_of_seances_to_consider + 1):
+                    if seance_j % 2 != 0:
+                        cohen_D = get_cohen_D(np.array(samples_d1), np.array(samples_d2))
+                        print(text_for_legend_in_array[algorithm_1], " VS ",
+                              text_for_legend_in_array[algorithm_2], "  COHEN D: ", cohen_D)
+                    else:
+                        samples_d1.extend(
+                            df['Accuracy'][(df['algorithm_index'] == algorithm_1) & (df['Seance'] == seance_j)])
+                        samples_d2.extend(
+                            df['Accuracy'][(df['algorithm_index'] == algorithm_2) & (df['Seance'] == seance_j)])
+    '''
+    for algorithm_1 in range(len(text_for_legend_in_array)):
+        for algorithm_2 in range(algorithm_1 + 1, len(text_for_legend_in_array)):
+            if algorithm_1 != algorithm_2:
+                samples_d1 = []
+                samples_d2 = []
+                for seance_j in range(0, number_of_seances_to_consider + 1):
+                    samples_d1.extend(
+                        df['Accuracy'][(df['algorithm_index'] == algorithm_1) & (df['Seance'] == seance_j)])
+                    samples_d2.extend(
+                        df['Accuracy'][(df['algorithm_index'] == algorithm_2) & (df['Seance'] == seance_j)])
+                    cohen_D = get_cohen_Dz(np.array(samples_d1), np.array(samples_d2))
+                    print("Seance: ", seance_j, ",  ", text_for_legend_in_array[algorithm_1], " VS ",
+                          text_for_legend_in_array[algorithm_2], "  COHEN Dz: ", cohen_D)
+
+    sns.despine(left=True)
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.3), labels=text_legend_array)
+    plt.show()
+
+
+def get_statistics(accuracies, seance, algorithm_name):
+    print("ACCURACIES: ", accuracies)
+    mean = np.mean(accuracies)
+    std = np.std(accuracies)
+    print(algorithm_name + "  , seance: " + str(seance), "  Mean: " + str(mean), "  STD: " + str(std))
+
+
+def get_cohen_Dz(samples_d1, samples_d2):
+    # Pooled standard deviation
+    difference = np.mean(samples_d1) - np.mean(samples_d2)
+    cohen_Dz = difference / np.std(samples_d1-samples_d2)
+    return cohen_Dz
+
+
+def generate_linear_regression(X, y, mean_accuracy_first_session, color, linestyle):
+    linear_regression = polyfit_with_fixed_points(n=1, x=np.array(X),
+                                                  y=np.array(y),
+                                                  xf=np.array([0.0]),
+                                                  yf=np.array([mean_accuracy_first_session]))
+    x_linear_regression = np.linspace(0., np.max(X) + 5., len(X))
+    y_regression = linear_regression[1] * x_linear_regression + linear_regression[0]
+
+    lower, upper = bootstrap_confidence_interval(X=np.array(X),
+                                                 y=np.array(y), first_value_x=np.array([0.0]),
+                                                 first_value_y=np.array([mean_accuracy_first_session]))
+
+    plt.fill_between(x_linear_regression, lower, upper, alpha=.25, color=color)
+
+    plt.plot(x_linear_regression, y_regression, linewidth=12., color=color, linestyle=linestyle)
+
+    return linear_regression
+
+
+def bootstrap_confidence_interval(X, y, first_value_x, first_value_y, n_iter=100):
+    res = 0
+    intv_index = np.array(list(range(len(X))))
+    y_b = np.zeros((n_iter, len(intv_index)), dtype=float)
+    data_to_evaluate = np.linspace(np.min(X), np.max(X), len(X))
+    for i in range(n_iter):
+        # Bootstrap: resample data with replacement
+        sample_index = np.random.choice(range(0, len(y)), int(len(y) / 2))
+        X_samples = X[sample_index]
+        y_samples = y[sample_index]
+
+        lin_model = polyfit_with_fixed_points(n=1, x=X_samples, y=y_samples, xf=first_value_x, yf=first_value_y)
+        y_hat = lin_model[1] * data_to_evaluate + lin_model[0]
+        res += y - y_hat
+        y_b[i, :] = y_hat[intv_index]
+        # plt.plot(X, y_hat, color='r', alpha=0.2, zorder=1)
+    y_conf_min = np.percentile(y_b, 2.5, axis=0)
+    y_conf_max = np.percentile(y_b, 97.5, axis=0)
+    return y_conf_min, y_conf_max
+
+
+def polyfit_with_fixed_points(n, x, y, xf, yf):
     mat = np.empty((n + 1 + len(xf),) * 2)
     vec = np.empty((n + 1 + len(xf),))
-    x_n = x**np.arange(2 * n + 1)[:, None]
+    x_n = x ** np.arange(2 * n + 1)[:, None]
     yx_n = np.sum(x_n[:n + 1] * y, axis=1)
     x_n = np.sum(x_n, axis=1)
     idx = np.arange(n + 1) + np.arange(n + 1)[:, None]
     mat[:n + 1, :n + 1] = np.take(x_n, idx)
-    xf_n = xf**np.arange(n + 1)[:, None]
+    xf_n = xf ** np.arange(n + 1)[:, None]
     mat[:n + 1, n + 1:] = xf_n / 2
     mat[n + 1:, :n + 1] = xf_n.T
     mat[n + 1:, n + 1:] = 0

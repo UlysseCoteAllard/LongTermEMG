@@ -101,17 +101,13 @@ def get_angles_from_positions_3d_arm(list_positions):
         norm_vector_comparing = np.linalg.norm(vector_arm_normalized_compare_to_neutral)
         if norm_vector_comparing > 0:
             vector_arm_normalized_compare_to_neutral /= norm_vector_comparing
-        #print(vector_arm_normalized_compare_to_neutral.tolist())
         yaw = math.asin(
             vector_arm_normalized_compare_to_neutral[2] /
             math.sqrt(vector_arm_normalized_compare_to_neutral[2]**2+vector_arm_normalized_compare_to_neutral[0]**2))
-        #yaw = math.atan2(vector_arm_normalized_compare_to_neutral[2], vector_arm_normalized_compare_to_neutral[0])
         # Output in radian, get degrees
         yaw_degree = yaw*(180/math.pi)
-        #print(yaw_degree)
         angles_degrees = {"pitch": pitch_degree, "yaw": yaw_degree, "timestamp": arm['timestamp']}
         list_angles_arm.append(angles_degrees)
-    #print("FINISHED")
     return list_angles_arm
 
 

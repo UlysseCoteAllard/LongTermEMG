@@ -16,6 +16,7 @@ def swish(x):
     """ Swish activation function """
     return x * torch.sigmoid(x)
 
+
 def drop_connect(inputs, p, training):
     """ Drop connect. """
     if not training:
@@ -34,10 +35,11 @@ def drop_connect(inputs, p, training):
 
 class Conv2dSamePadding(nn.Conv2d):
     """ 2D Convolutions like TensorFlow """
+
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1, groups=1, bias=True,
                  reduce_horizontal_by_one=True):
         super().__init__(in_channels, out_channels, kernel_size, stride, 0, dilation, groups, bias)
-        self.stride = self.stride if len(self.stride) == 2 else [self.stride[0]]*2
+        self.stride = self.stride if len(self.stride) == 2 else [self.stride[0]] * 2
         self._reduce_horizontal_by_one = reduce_horizontal_by_one
 
     def forward(self, x):
@@ -50,7 +52,7 @@ class Conv2dSamePadding(nn.Conv2d):
         if self._reduce_horizontal_by_one:
             pad_h -= 1
         if pad_h > 0 or pad_w > 0:
-            x = F.pad(x, [pad_w//2, pad_w - pad_w//2, pad_h//2, pad_h - pad_h//2])
+            x = F.pad(x, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
         return F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
 
 
@@ -68,9 +70,6 @@ class FunkyConvBlock(nn.Module):
 
         # Convolutional layer with same output size as input when stride = 1.
         # When stride greater, serve as a dimensionality reduction
-        #self._conv1 = Conv2dSamePadding(in_channels=input_filters, out_channels=final_output, kernel_size=kernel_size,
-        #                                stride=stride, groups=groups_nmbr, reduce_horizontal_by_one=True)
-
         self._conv1 = nn.Conv2d(in_channels=input_filters, out_channels=final_output, kernel_size=kernel_size,
                                 stride=stride)
 
@@ -80,7 +79,7 @@ class FunkyConvBlock(nn.Module):
         self._bn = nn.BatchNorm2d(num_features=final_output)
 
     def forward(self, inputs, drop_connect_rate=None):
-        #x = swish(self._conv1(inputs))
+        # x = swish(self._conv1(inputs))
         x = F.leaky_relu(self._conv1(inputs), negative_slope=0.1, inplace=True)
 
         if self._has_se:
@@ -99,7 +98,7 @@ class FunkyConvBlock(nn.Module):
 class SqueezeAndExciteLayer(nn.Module):
     def __init__(self, input_filters, output_filters, squeeze_excite_ratio):
         super().__init__()
-        num_squeezed_channels = max(1, int(input_filters*squeeze_excite_ratio))
+        num_squeezed_channels = max(1, int(input_filters * squeeze_excite_ratio))
         self._se_reduce = Conv2dSamePadding(in_channels=output_filters,
                                             out_channels=num_squeezed_channels, kernel_size=1)
         self._se_expand = Conv2dSamePadding(in_channels=num_squeezed_channels,
@@ -120,6 +119,7 @@ BlockArgs = collections.namedtuple('BlockArgs', [
 # Change namedtuple defaults
 BlockArgs.__new__.__defaults__ = (None,) * len(BlockArgs._fields)
 
+
 class BlockDecoder(object):
     """ Block Decoder for readability, straight from the official TensorFlow repository """
 
@@ -138,7 +138,7 @@ class BlockDecoder(object):
 
         # Check stride
         assert (('s' in options and len(options['s']) == 1) or
-                (len(options['s']) == 2))# and options['s'][0] == options['s'][1]))
+                (len(options['s']) == 2))  # and options['s'][0] == options['s'][1]))
 
         return BlockArgs(
             kernel_size=(int(options['k'][0]), int(options['k'][1])),
@@ -193,87 +193,6 @@ class BlockDecoder(object):
             block_strings.append(BlockDecoder._encode_block_string(block))
         return block_strings
 
-def generate_examples_by_swapping_time_data(examples, number_of_labels=2):
-    labels = torch.randint(low=0, high=number_of_labels, size=(examples.size(0),))
-    # Batch X kernel X Channel X Time (we want to change the channel
-    examples_time_swapped = torch.empty_like(examples)
-    mean_examples = torch.mean(examples, dim=[0, 1, 3])
-    std_examples = torch.std(examples, dim=[0, 1, 3])
-    normalDist = NormalDistribution.Normal(mean_examples, std_examples)
-    random_channel = torch.randint(examples.size(2), (examples.size(0),))
-
-    for i, example in enumerate(examples):
-        if labels[i] == 1:
-            examples_time_swapped[i, 0, random_channel[i], :] = normalDist.sample((examples.size(3),)
-                                                                                  ).transpose_(0, 1)[random_channel[i]]
-        else:
-            examples_time_swapped[i, :, :, :] = examples[i, :, :, :]
-
-        '''
-        for j, kernel in enumerate(example):
-            
-            for k, channel in enumerate(kernel):
-                # Randomize the timeserie
-                if labels[i] == 1:
-                    idx = torch.randperm(channel.size(0))
-                    examples_time_swapped[i, j, k, :] = channel[idx]
-                else:
-                    examples_time_swapped[i, j, k, :] = channel
-        '''
-    return examples_time_swapped, labels
-
-
-def generate_examples_by_swapping_channels(examples, number_of_labels=2):
-    '''
-    channel_swap = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 5, 2, 7, 4, 9, 6, 1, 8, 3], #[4, 1, 6, 3, 8, 5, 0, 7, 2, 9],
-                    [0, 1, 7, 8, 9, 5, 6, 2, 3, 4], [5, 6, 7, 3, 4, 0, 1, 2, 8, 9]]
-    '''
-    channel_swap = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 5, 2, 7, 4, 9, 6, 1, 8, 3]]#, [0, 1, 7, 3, 4, 5, 6, 2, 8, 9]]#,
-                    #[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]
-
-    channel_swap = torch.from_numpy(np.array(channel_swap, dtype=np.int64))
-    labels = torch.randint(low=0, high=number_of_labels, size=(examples.size(0),))
-    # Batch X kernel X Channel X Time (we want to change the channel
-    examples_swapped = torch.empty_like(examples)
-    for i, example in enumerate(examples):
-        for j, kernel in enumerate(example):
-            examples_swapped[i, j, :, :] = kernel[channel_swap[labels[i]]]
-    return examples_swapped, labels
-
-
-def generate_task_examples(input_source, input_target, device='cuda'):
-    swapped_channels_examples_source, swapped_channels_labels_source = generate_examples_by_swapping_channels(
-        input_source)
-    swapped_channels_examples_target, swapped_channels_labels_target = generate_examples_by_swapping_channels(
-        input_target)
-    swapped_channels_examples = torch.cat((swapped_channels_examples_source, swapped_channels_examples_target), dim=0)
-    swapped_channels_labels = torch.cat((swapped_channels_labels_source, swapped_channels_labels_target), dim=0)
-    idx = torch.randperm(swapped_channels_labels.nelement())
-    swapped_channels_examples_shuffled = swapped_channels_examples[idx]
-    swapped_channels_labels_shuffled = swapped_channels_labels[idx]
-
-    time_examples_source, time_labels_source = generate_examples_by_swapping_time_data(
-        input_source)
-    time_examples_target, time_labels_target = generate_examples_by_swapping_time_data(
-        input_target)
-    time_examples = torch.cat((time_examples_source, time_examples_target), dim=0)
-    time_labels = torch.cat((time_labels_source, time_labels_target), dim=0)
-    idx = torch.randperm(time_labels.nelement())
-    time_examples_shuffled = time_examples[idx]
-    time_labels_shuffled = time_labels[idx]
-
-
-    '''
-    time_examples_source, time_labels_source = generate_examples_by_swapping_time_data(
-        swapped_channels_examples_shuffled)
-
-    return time_examples_source.to(device=device), swapped_channels_labels_shuffled.to(device=device), \
-           time_labels_source.to(device=device)
-    '''
-
-    return swapped_channels_examples_shuffled.to(device=device), swapped_channels_labels_shuffled.to(device=device), \
-           time_examples_shuffled.to(device=device), time_labels_shuffled.to(device=device)
-
 
 # Layer by Yann Dubois (https://discuss.pytorch.org/t/writing-a-simple-gaussian-noise-layer-in-pytorch/4694/3)
 class GaussianNoise(nn.Module):
@@ -312,6 +231,7 @@ class ConditionalEntropyLoss(_WeightedLoss):
         in case of 2D Loss, or :math:`(N, C, d_1, d_2, ..., d_K)` where :math:`K \geq 1`
         in the case of K-dimensional loss.
     """
+
     def __init__(self, weight=None, size_average=None, ignore_index=-100):
         super(ConditionalEntropyLoss, self).__init__(weight, size_average)
         self.ignore_index = ignore_index
@@ -332,6 +252,8 @@ Apply the KL divergence as a loss (but first compute the log_softmax for predict
 As we are in a machine learning context, minimizing the KL divergence is equivalent to minimizing the cross-entropy 
 (do that instead)
 '''
+
+
 class KL_divergence_loss(nn.Module):
     def __init__(self):
         super(KL_divergence_loss, self).__init__()
@@ -345,11 +267,14 @@ class KL_divergence_loss(nn.Module):
         q_log_p = torch.mean(torch.sum(q * F.log_softmax(predictions_p, dim=1), dim=1))
         return q_log_q - q_log_p
 
+
 """
 VATLoss implemented using: https://github.com/ozanciga/dirt-t and
 https://github.com/domainadaptation/salad 
 author={Schneider, Steffen and Ecker, Alexander S. and Macke, Jakob H. and Bethge, Matthias}
 """
+
+
 class VATLoss(nn.Module):
     def __init__(self, model, epsilon_radius=1e0, perturbation_for_gradient=1e-1, n_power=1):
         super(VATLoss, self).__init__()
@@ -394,6 +319,8 @@ class VATLoss(nn.Module):
 EMA
 This is taken entirely from: https://github.com/ozanciga/dirt-t
 """
+
+
 class ExponentialMovingAverage:
     def __init__(self, decay):
         self.decay = decay
@@ -432,7 +359,7 @@ class ReversalGradientLayerF(Function):
 class ScaleLayer(nn.Module):
     def __init__(self, parameters_dimensions=(1, 1, 1, 1), init_value=1.):
         super().__init__()
-        self.scale = Parameter(torch.ones(parameters_dimensions)*init_value)
+        self.scale = Parameter(torch.ones(parameters_dimensions) * init_value)
 
     def forward(self, input):
-        return input*self.scale
+        return input * self.scale

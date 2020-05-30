@@ -2,24 +2,25 @@ import os
 import pickle
 import numpy as np
 import seaborn as sns
-import matplotlib.pyplot as plt
 
 import torch
 
 from LongTermClassificationMain.Models.raw_TCN import TemporalConvNet as rawConvNet
 from LongTermClassificationMain.Models.raw_TCN_Transfer_Learning import TargetNetwork
-from LongTermClassificationMain.TrainingsAndEvaluations.training_loops_preparations import train_TL_convNet, train_raw_convNet
+from LongTermClassificationMain.TrainingsAndEvaluations.training_loops_preparations import train_TL_convNet
 from LongTermClassificationMain.PrepareAndLoadDataLongTerm. \
     load_dataset_in_dataloader import load_dataloaders_training_sessions
-from LongTermClassificationMain.TrainingsAndEvaluations.utils_training_and_evaluation import create_confusion_matrix, \
-    create_long_term_classification_graph
+from LongTermClassificationMain.TrainingsAndEvaluations.utils_training_and_evaluation import \
+    long_term_classification_graph, long_term_pointplot
 
 
 def test_network_TL_algorithm(examples_datasets_train, labels_datasets_train, num_kernels,
                               path_weights_normal='../weights', path_weights_TL='../weights_TL',
-                              filter_size=(4, 10), algo_name="TransferLearning"):
+                              filter_size=(4, 10), algo_name="TransferLearning",
+                              cycle_for_test=None):
     _, _, participants_test = load_dataloaders_training_sessions(examples_datasets_train,
-                                                                 labels_datasets_train, batch_size=512)
+                                                                 labels_datasets_train, batch_size=512,
+                                                                 cycle_for_test=cycle_for_test)
 
     predictions = []
     ground_truths = []
@@ -32,20 +33,22 @@ def test_network_TL_algorithm(examples_datasets_train, labels_datasets_train, nu
         for session_index, training_session_test_data in enumerate(dataset_test):
             if session_index == 0:
                 model = rawConvNet(number_of_class=11, num_kernels=num_kernels, kernel_size=filter_size).cuda()
-                best_weights = torch.load(
-                    path_weights_normal + "/participant_%d/best_weights_participant_normal_training_%d.pt" %
+                best_state = torch.load(
+                    path_weights_normal + "/participant_%d/best_state_%d.pt" %
                     (participant_index, 0))
-                model.load_state_dict(best_weights)
+                model.load_state_dict(best_state['state_dict'])
             else:
-                weights_pre_training = torch.load(path_weights_TL +
-                                                  "/participant_%d/best_weights_participant_pre_training_%d.pt" %
-                                                  (participant_index, session_index - 1))
+                state_pre_training = torch.load(path_weights_TL +
+                                                "/participant_%d/best_state_participant_pre_training_%d.pt" %
+                                                (participant_index, session_index))
+                weights_pre_training = state_pre_training['state_dict']
                 model = TargetNetwork(weight_pre_trained_convNet=weights_pre_training, num_kernels=num_kernels,
                                       kernel_size=filter_size).cuda()
-                best_weights = torch.load(path_weights_TL +
-                                          "/participant_%d/best_weights_participant_normal_training_%d.pt" % (
-                                              participant_index, session_index))
-                model.load_state_dict(best_weights)
+
+                best_state = torch.load(
+                    path_weights_TL + "/participant_%d/best_state_%d.pt" %
+                    (participant_index, session_index))
+                model.load_state_dict(best_state['state_dict'])
 
             predictions_training_session = []
             ground_truth_training_sesssion = []
@@ -87,7 +90,6 @@ def test_network_TL_algorithm(examples_datasets_train, labels_datasets_train, nu
         myfile.write("OVERALL ACCURACY: " + str(np.mean(accuracies_to_display)))
 
 
-
 if __name__ == "__main__":
     print(os.listdir("../../"))
     with open("../../Processed_datasets/LongTermDataset_training_session.pickle", 'rb') as f:
@@ -101,22 +103,31 @@ if __name__ == "__main__":
     filter_size = (4, 10)
     num_kernels = [16, 32, 64]
 
+    path_weights_normal_training = "../weights_TWO_CYCLES_normal_training_fine_tuning"
+    path_weight_to_save_to = "../weights_TL_Two_Cycles_Recalibration"
     train_TL_convNet(examples_datasets_train, labels_datasets_train, filter_size=filter_size, num_kernels=num_kernels,
-                     number_of_cycles_rest_of_training=4, number_of_cycle_for_first_training=4,
-                     path_weight_to_save_to="../weights_TL_full_training")
+                     number_of_cycles_rest_of_training=3, number_of_cycle_for_first_training=3,
+                     path_weight_to_save_to=path_weight_to_save_to,
+                     path_weights_normal_training=path_weights_normal_training)
 
-    train_raw_convNet(examples_datasets_train, labels_datasets_train, filter_size=filter_size, num_kernels=num_kernels,
-                      number_of_cycle_for_first_training=4, number_of_cycles_rest_of_training=4,
-                      path_weight_to_save_to="../weights_full_training")
-    #test_network_TL_algorithm(examples_datasets_train, labels_datasets_train, filter_size=filter_size,
-    #                         num_kernels=[16, 32, 64])
+    path_weights_normal_training = "../weights_TWO_CYCLES_normal_training_fine_tuning"
+    path_weight_to_save_to = "../weights_TL_Two_Cycles_Recalibration"
+    test_network_TL_algorithm(examples_datasets_train, labels_datasets_train, filter_size=filter_size,
+                              num_kernels=num_kernels, algo_name="TADANN_Two_CYLES",
+                              path_weights_TL=path_weight_to_save_to,
+                              path_weights_normal=path_weights_normal_training,
+                              cycle_for_test=3)
 
     # Graphs production
-    ground_truths_no_retraining, predictions_no_retraining = np.load(
-        "../../results/predictions_training_session_TransferLearning.npy")
-    print(ground_truths_no_retraining)
+    ground_truths_TADANN, predictions_TADANN = np.load(
+        "../../results/predictions_training_session_TADANN_ONE_CYLE.npy")
+    print(ground_truths_TADANN)
     ground_truths_WITH_retraining, predictions_WITH_retraining = np.load(
         "../../results/predictions_training_session_WITH_RETRAINING.npy")
+
+    ground_truths_no_retraining, predictions_no_retraining = np.load(
+        "../../results/predictions_training_session_no_retraining.npy")
+    print(ground_truths_no_retraining)
 
     classes = ["Neutral", "Radial Deviation", "Wrist Flexion", "Ulnar Deviation", "Wrist Extension", "Supination",
                "Pronation", "Power Grip", "Open Hand", "Chuck Grip", "Pinch Grip"]
@@ -124,9 +135,18 @@ if __name__ == "__main__":
     font_size = 24
     sns.set(style='dark')
 
-    create_long_term_classification_graph(ground_truths_no_retraining=ground_truths_no_retraining,
-                                          predictions_no_retraining=predictions_no_retraining,
-                                          ground_truths_WITH_retraining=ground_truths_WITH_retraining,
-                                          predictions_WITH_retraining=predictions_WITH_retraining,
-                                          timestamps=training_datetimes, number_of_seances_to_consider=3)
+    ground_truths_array = [ground_truths_TADANN, ground_truths_WITH_retraining, ground_truths_no_retraining]
+    predictions_array = [predictions_TADANN, predictions_WITH_retraining, predictions_no_retraining]
+    text_legend_array = ["TADANN", "Re-Calibration", "No Re-Calibration"]
 
+    long_term_pointplot(ground_truths_in_array=ground_truths_array,
+                        predictions_in_array=predictions_array,
+                        text_for_legend_in_array=text_legend_array,
+                        timestamps=training_datetimes, number_of_seances_to_consider=8,
+                        remove_transition_evaluation=False, only_every_second_session=True)
+
+    long_term_classification_graph(ground_truths_in_array=ground_truths_array,
+                                   predictions_in_array=predictions_array,
+                                   text_for_legend_in_array=text_legend_array,
+                                   timestamps=training_datetimes, number_of_seances_to_consider=3,
+                                   remove_transition_evaluation=False)
