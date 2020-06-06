@@ -627,6 +627,9 @@ def get_dataset_with_features_set(dataset, features_set_function=get_TD_features
 
 
 def getTDPSDfeat_official(x, *slidingParams):
+    """
+    % Implementation from Rami Khusaba
+    """
     # x should be a numpy array
     x = np.array(x)
 
@@ -671,6 +674,7 @@ def getTDPSDfeat_official(x, *slidingParams):
 
 def features_for_TDPSD(vector):
     """
+    % Implementation from Rami Khusaba adapted to our code
     % Time-domain power spectral moments (TD-PSD)
     % Using Fourier relations between time domina and frequency domain to
     % extract power spectral moments dircetly from time domain.
@@ -727,7 +731,7 @@ def features_for_TDPSD(vector):
 
 def getTSD(all_channels_data_in_window):
     """
-        %Implementation from Rami adapted to our code
+        %Implementation from Rami Khusaba adapted to our code
         % References
         % [1] A. Al-Timemy, R. N. Khushaba, G. Bugmann, and J. Escudero, "Improving the Performance Against Force Variation of EMG Controlled Multifunctional Upper-Limb Prostheses for Transradial Amputees",
         %     IEEE Transactions on Neural Systems and Rehabilitation Engineering, DOI: 10.1109/TNSRE.2015.2445634, 2015.
@@ -778,6 +782,18 @@ def getTSD(all_channels_data_in_window):
 
 
 def getTSDfeat_rami(x, *slidingParams):
+    """
+       % Implementation from Rami Khusaba
+       % Time-domain power spectral moments (TD-PSD)
+       % Using Fourier relations between time domina and frequency domain to
+       % extract power spectral moments directly from time domain.
+       %
+       % References
+       % [1] A. Al-Timemy, R. N. Khushaba, G. Bugmann, and J. Escudero, "Improving the Performance Against Force Variation of EMG Controlled Multifunctional Upper-Limb Prostheses for Transradial Amputees",
+       %     IEEE Transactions on Neural Systems and Rehabilitation Engineering, DOI: 10.1109/TNSRE.2015.2445634, 2015.
+       % [2] R. N. Khushaba, Maen Takruri, Jaime Valls Miro, and Sarath Kodagoda, "Towards limb position invariant myoelectric pattern recognition using time-dependent spectral features",
+       %     Neural Networks, vol. 55, pp. 42-58, 2014.
+    """
     # x should be a numpy array
     x = np.array(x)
 
@@ -843,6 +859,7 @@ def getTSDfeat_rami(x, *slidingParams):
 
 def getTSDfeatures_for_one_representation(vector):
     """
+    % Implementation from Rami Khusaba
     % Time-domain power spectral moments (TD-PSD)
     % Using Fourier relations between time domina and frequency domain to
     % extract power spectral moments dircetly from time domain.
