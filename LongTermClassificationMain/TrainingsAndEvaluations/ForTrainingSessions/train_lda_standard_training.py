@@ -2,6 +2,7 @@ import os
 import pickle
 import numpy as np
 from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from LongTermClassificationMain.PrepareAndLoadDataLongTerm. \
@@ -58,12 +59,13 @@ def get_dataset(examples_datasets, labels_datasets, number_of_cycles_training, i
             session += 1
             if session >= 3:
                 break
+
         participants_dataset_train.append({"Examples": dataset_training_X, "Labels": dataset_training_Y})
         participants_dataset_test.append({"Examples": dataset_testing_X, "Labels": dataset_testing_Y})
     return participants_dataset_train, participants_dataset_test
 
 
-def train_test_technique(dataset_train, dataset_test, name_technique, number_of_class=7):
+def train_test_technique(dataset_train, dataset_test, name_technique, number_of_class=7, scale=False):
     average_accuracy = []
     predictions_all = []
     ground_truths_all = []
@@ -72,9 +74,19 @@ def train_test_technique(dataset_train, dataset_test, name_technique, number_of_
         groundtruth_all_session = []
         for session_j in range(len(dataset_train[participant_i]["Examples"])):
             lda = LinearDiscriminantAnalysis()
-            lda.fit(np.nan_to_num(dataset_train[participant_i]["Examples"][session_j]),
-                    dataset_train[participant_i]["Labels"][session_j])
-            predictions = lda.predict(np.nan_to_num(dataset_test[participant_i]["Examples"][session_j]))
+            if scale:
+                scaler = MinMaxScaler()
+                training_data = scaler.fit_transform(dataset_train[participant_i]["Examples"][session_j])
+                testing_data = scaler.transform(dataset_test[participant_i]["Examples"][session_j])
+
+                training_data = np.nan_to_num(training_data)
+                testing_data = np.nan_to_num(testing_data)
+            else:
+                training_data = np.nan_to_num(dataset_train[participant_i]["Examples"][session_j])
+                testing_data = np.nan_to_num(dataset_test[participant_i]["Examples"][session_j])
+            print(training_data)
+            lda.fit(training_data, dataset_train[participant_i]["Labels"][session_j])
+            predictions = lda.predict(testing_data)
             predictions_all_sessions.extend(predictions)
             groundtruth_all_session.extend(dataset_test[participant_i]["Labels"][session_j])
             average_accuracy.append(accuracy_score(dataset_test[participant_i]["Labels"][session_j], predictions))
@@ -91,15 +103,20 @@ def train_test_technique(dataset_train, dataset_test, name_technique, number_of_
 
 
 if __name__ == "__main__":
-    dataset_techniques_names = ["TD", "NinaPro", "SampEn Pipeline", "LSF9", "TDPSD", "FSD"]
+    dataset_techniques_names = ["TD", "NinaPro", "SampEn Pipeline", "LSF9", "TDPSD", "TSD"]
     dataset_techniques = ["TD_features_set_training_session", "NinaPro_features_set_training_session",
                           "Sampen_features_set_training_session", "LSF9_features_set_training_session",
-                          "TDPSD_features_set_training_session", "FSD_features_set_training_session"]
+                          "TDPSD_features_set_training_session", "TSD_features_set_training_session"]
 
     for name, dataset in zip(dataset_techniques_names, dataset_techniques):
         print(os.listdir("../../"))
         with open("../../Processed_datasets/%s.pickle" % dataset, 'rb') as f:
             dataset_training = pickle.load(file=f)
+
+        if name in ["TDPSD", "TSD"]:
+            scale = True
+        else:
+            scale = False
 
         examples_datasets_train = dataset_training['examples_training']
         labels_datasets_train = dataset_training['labels_training']
@@ -109,7 +126,7 @@ if __name__ == "__main__":
             examples_datasets_train, labels_datasets_train,
             number_of_cycles_training=3, ignore_first=True, gestures_to_remove=(5, 6, 9, 10))
 
-        accuracies = train_test_technique(participants_train, participants_test, name, number_of_class=7)
+        accuracies = train_test_technique(participants_train, participants_test, name, number_of_class=7, scale=scale)
 
         print("%s : 7 GESTURES: Average accuracy score: %f, STD: %f" % (name, np.mean(accuracies), np.std(accuracies)))
 
@@ -117,6 +134,6 @@ if __name__ == "__main__":
             examples_datasets_train, labels_datasets_train,
             number_of_cycles_training=3, ignore_first=True)
 
-        accuracies = train_test_technique(participants_train, participants_test, name, number_of_class=11)
+        accuracies = train_test_technique(participants_train, participants_test, name, number_of_class=11, scale=scale)
 
         print("%s : 11 GESTURES: Average accuracy score: %f, STD: %f" % (name, np.mean(accuracies), np.std(accuracies)))

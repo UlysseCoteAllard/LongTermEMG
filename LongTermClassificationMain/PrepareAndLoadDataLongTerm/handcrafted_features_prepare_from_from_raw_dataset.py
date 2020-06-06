@@ -389,13 +389,13 @@ if __name__ == '__main__':
     feature_set_function = feature_extraction.get_TDPSD
     read_data_training(path="../../datasets/longterm_dataset_3DC", features_set_name=features_set_name,
                        feature_set_function=feature_set_function)
-
+    
     features_set_name = "NinaPro_features_set"
     feature_set_function = feature_extraction.get_NinaPro_best
     read_data_training(path="../../datasets/longterm_dataset_3DC", features_set_name=features_set_name,
                        feature_set_function=feature_set_function)
-    '''
 
+    '''
     features_set_name = "TSD_features_set"
     feature_set_function = feature_extraction.getTSD
     read_data_training(path="../../datasets/longterm_dataset_3DC", features_set_name=features_set_name,

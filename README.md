@@ -1,10 +1,6 @@
 # LongTermEMG
 
 Work in progress. 
-Note that the current implementation of TDPSD and TSD had a mistake which negatively impacted performance. They are being updated to 
-correctly reflect their description and will be compared with the matlab implementation from the original author 
-(available here: https://github.com/RamiKhushaba/getTDPSDfeat) to make sure that they output the same values. The article 
-will be updated accordingly. 
 
 LongTerm 3DC Dataset is available here: http://ieee-dataport.org/1948
 
