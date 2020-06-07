@@ -2,6 +2,7 @@ import os
 import pickle
 import numpy as np
 from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from LongTermClassificationMain.TrainingsAndEvaluations.ForTrainingSessions.train_lda_standard_training import \
@@ -26,7 +27,7 @@ def prepare_dataset_evaluation_session(examples_datasets_evaluation, labels_data
 
 
 def evaluate_on_evaluation_session(participants_train, participants_evaluation_examples,
-                                   participants_evaluation_labels):
+                                   participants_evaluation_labels, scale=False):
     average_accuracy = []
     predictions_all = []
     ground_truths_all = []
@@ -41,10 +42,22 @@ def evaluate_on_evaluation_session(participants_train, participants_evaluation_e
             # first three of these sessions
             if session_j % 2 != 0:
                 lda = LinearDiscriminantAnalysis()
-                lda.fit(np.nan_to_num(participants_train[participant_i]["Examples"][int(session_j/2)]),
-                        participants_train[participant_i]["Labels"][int(session_j/2)])
+                if scale:
+                    scaler = MinMaxScaler()
+                    training_data = scaler.fit_transform(
+                        participants_train[participant_i]["Examples"][int(session_j / 2)])
+                    testing_data = scaler.transform(
+                        participants_evaluation_examples[participant_i][session_j])
 
-                predictions = lda.predict(np.nan_to_num(participants_evaluation_examples[participant_i][session_j]))
+                    training_data = np.nan_to_num(training_data)
+                    testing_data = np.nan_to_num(testing_data)
+                else:
+                    training_data = np.nan_to_num(participants_train[participant_i]["Examples"][int(session_j / 2)])
+                    testing_data = np.nan_to_num(participants_evaluation_examples[participant_i][session_j])
+                lda.fit(training_data,
+                        participants_train[participant_i]["Labels"][int(session_j / 2)])
+
+                predictions = lda.predict(testing_data)
                 predictions_all_sessions.extend(predictions)
                 groundtruth_all_session.extend(participants_evaluation_labels[participant_i][session_j])
                 accuracy_sessions.append(
@@ -56,8 +69,8 @@ def evaluate_on_evaluation_session(participants_train, participants_evaluation_e
 
 
 if __name__ == '__main__':
-    dataset_techniques_names = ["TD", "TSD"]
-    dataset_techniques = ["TD_features_set", "TSD_features_set"]
+    dataset_techniques_names = ["TD", "TDPSD", "TSD"]
+    dataset_techniques = ["TD_features_set", "TDPSD_features_set", "TSD_features_set"]
     for name, dataset in zip(dataset_techniques_names, dataset_techniques):
         print(os.listdir("../../"))
         with open("../../Processed_datasets/%s_training_session.pickle" % dataset, 'rb') as f:
@@ -74,4 +87,10 @@ if __name__ == '__main__':
         participants_train, _ = get_dataset(examples_datasets_train, labels_datasets_train, number_of_cycles_training=4,
                                             ignore_first=True)
 
-        evaluate_on_evaluation_session(participants_train, examples_datasets_evaluation, labels_datasets_evaluation)
+        if name in ["TDPSD", "TSD"]:
+            scale = True
+        else:
+            scale = False
+
+        evaluate_on_evaluation_session(participants_train, examples_datasets_evaluation, labels_datasets_evaluation,
+                                       scale=scale)

@@ -84,7 +84,6 @@ def train_test_technique(dataset_train, dataset_test, name_technique, number_of_
             else:
                 training_data = np.nan_to_num(dataset_train[participant_i]["Examples"][session_j])
                 testing_data = np.nan_to_num(dataset_test[participant_i]["Examples"][session_j])
-            print(training_data)
             lda.fit(training_data, dataset_train[participant_i]["Labels"][session_j])
             predictions = lda.predict(testing_data)
             predictions_all_sessions.extend(predictions)
