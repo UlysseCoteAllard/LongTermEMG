@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from LongTermClassificationMain.Models.TSD_neural_network import TSD_Network
 from LongTermClassificationMain.Models.spectrogram_ConvNet import SpectrogramConvNet
 from LongTermClassificationMain.Models.raw_TCN import TemporalConvNet
 from LongTermClassificationMain.Models.raw_TCN_Transfer_Learning import SourceNetwork, TargetNetwork
@@ -43,7 +44,8 @@ def train_Spectrogram_fine_tuning(examples_datasets_train, labels_datasets_train
                                   number_of_cycle_for_first_training=2, number_of_cycles_rest_of_training=2,
                                   path_weight_to_save_to=
                                   "../weights_SPECTROGRAMS_TWO_CYCLES_normal_training_fine_tuning",
-                                  gestures_to_remove=None, number_of_classes=11, batch_size=512):
+                                  gestures_to_remove=None, number_of_classes=11, batch_size=512,
+                                  spectrogram_model=True, feature_vector_input_length=None, learning_rate=0.001316):
     participants_train, participants_validation, _ = load_dataloaders_training_sessions_spectrogram(
         examples_datasets_train, labels_datasets_train, batch_size=batch_size,
         number_of_cycle_for_first_training=number_of_cycle_for_first_training,
@@ -55,14 +57,17 @@ def train_Spectrogram_fine_tuning(examples_datasets_train, labels_datasets_train
         for session_j in range(0, len(participants_train[participant_i])):
             print("Session: ", session_j)
             # Define Model
-            model = SpectrogramConvNet(number_of_class=number_of_classes, num_kernels=num_kernels,
-                                       kernel_size=filter_size).cuda()
+            if spectrogram_model:
+                model = SpectrogramConvNet(number_of_class=number_of_classes, num_kernels=num_kernels,
+                                           kernel_size=filter_size).cuda()
+            else:
+                model = TSD_Network(number_of_class=number_of_classes, num_neurons=num_kernels,
+                                    feature_vector_input_length=feature_vector_input_length).cuda()
 
             # Define Loss functions
             cross_entropy_loss_classes = nn.CrossEntropyLoss(reduction='mean').cuda()
 
             # Define Optimizer
-            learning_rate = 0.001316
             print(model.parameters())
             optimizer = optim.Adam(model.parameters(), lr=learning_rate, betas=(0.5, 0.999))
 
@@ -96,7 +101,8 @@ def train_DA_spectrograms_evaluation(examples_datasets_evaluations, labels_datas
                                      examples_datasets_train, labels_datasets_train, algo_name,
                                      num_kernels, filter_size, path_weights_to_load_from, path_weights_DA,
                                      batch_size=512, patience_increment=10, use_recalibration_data=False,
-                                     number_of_cycle_for_first_training=4, number_of_cycles_rest_of_training=4):
+                                     number_of_cycle_for_first_training=4, number_of_cycles_rest_of_training=4,
+                                     spectrogram_model=True, feature_vector_input_length=None, learning_rate=0.001316):
     # Get the data to use as the SOURCE from the training sessions
     participants_train, participants_validation, _ = load_dataloaders_training_sessions_spectrogram(
         examples_datasets_train, labels_datasets_train, batch_size=batch_size,
@@ -118,13 +124,16 @@ def train_DA_spectrograms_evaluation(examples_datasets_evaluations, labels_datas
                 corresponding_training_session_index = 0 if use_recalibration_data is False else int(session_j / 2)
 
                 # Classifier and discriminator
-                gesture_classification = SpectrogramConvNet(number_of_class=11, num_kernels=num_kernels,
-                                                            kernel_size=filter_size, dropout=0.5).cuda()
+                if spectrogram_model:
+                    gesture_classification = SpectrogramConvNet(number_of_class=11, num_kernels=num_kernels,
+                                                                kernel_size=filter_size, dropout=0.5).cuda()
+                else:
+                    gesture_classification = TSD_Network(number_of_class=11, num_neurons=num_kernels,
+                                                         feature_vector_input_length=feature_vector_input_length).cuda()
                 # loss functions
                 crossEntropyLoss = nn.CrossEntropyLoss().cuda()
                 # optimizer
                 precision = 1e-8
-                learning_rate = 0.001316
                 optimizer_classifier = optim.Adam(gesture_classification.parameters(), lr=learning_rate,
                                                   betas=(0.5, 0.999))
                 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer_classifier, mode='min', factor=.2,
@@ -159,26 +168,29 @@ def train_DA_spectrograms_evaluation(examples_datasets_evaluations, labels_datas
                                                   crossEntropyLoss=crossEntropyLoss, vatLoss=vatLoss,
                                                   scheduler=scheduler,
                                                   optimizer_classifier=optimizer_classifier,
-                                                  train_dataset_source=participants_train[participant_i][0],
+                                                  train_dataset_source=participants_train[participant_i][
+                                                      corresponding_training_session_index],
                                                   train_dataset_target=
-                                                  participants_evaluation_dataloader[participant_i][
-                                                      session_j],
-                                                  validation_dataset_source=participants_validation[participant_i][0],
+                                                  participants_evaluation_dataloader[participant_i][session_j],
+                                                  validation_dataset_source=participants_validation[participant_i][
+                                                      corresponding_training_session_index],
                                                   patience_increment=patience_increment)
                 elif "DirtT" in algo_name:
-                    learning_rate = 0.001316
                     # Dirt T need Conditional Entropy loss and Virtual Adversarial Training loss too
                     conditionalEntropy = ConditionalEntropyLoss().cuda()
                     vatLoss = VATLoss(gesture_classification).cuda()
 
                     # Classifier and discriminator
-                    gesture_classification = SpectrogramConvNet(number_of_class=11, num_kernels=num_kernels,
-                                                                kernel_size=filter_size, dropout=0.5).cuda()
+                    if spectrogram_model:
+                        gesture_classification = SpectrogramConvNet(number_of_class=11, num_kernels=num_kernels,
+                                                                    kernel_size=filter_size, dropout=0.5).cuda()
+                    else:
+                        gesture_classification = TSD_Network(number_of_class=11, num_neurons=num_kernels,
+                                                             feature_vector_input_length=feature_vector_input_length).cuda()
                     # loss functions
                     crossEntropyLoss = nn.CrossEntropyLoss().cuda()
                     # optimizer
                     precision = 1e-8
-                    learning_rate = 0.001316
                     optimizer_classifier = optim.Adam(gesture_classification.parameters(), lr=learning_rate,
                                                       betas=(0.5, 0.999))
                     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer_classifier, mode='min',
@@ -222,11 +234,12 @@ def train_DA_spectrograms_evaluation(examples_datasets_evaluations, labels_datas
 
 
 def train_AdaBN_spectrograms(examples_datasets_train, labels_datasets_train, num_kernels, filter_size=(4, 10),
-                             algo_name="AdaBN", path_weights_to_save_to="../Weights/weights_", batch_size=512,
+                             algo_name="AdaBN", path_weights_to_save_to="Weights_TSD/weights_", batch_size=512,
                              patience_increment=10,
                              path_weights_fine_tuning="../weights_TWO_CYCLES_normal_training_fine_tuning",
                              number_of_cycle_for_first_training=3, number_of_cycles_rest_of_training=3,
-                             gestures_to_remove=None, number_of_classes=11):
+                             gestures_to_remove=None, number_of_classes=11, spectrogram_model=True,
+                             feature_vector_input_length=None):
     participants_train, participants_validation, participants_test = load_dataloaders_training_sessions_spectrogram(
         examples_datasets_train, labels_datasets_train, batch_size=batch_size,
         number_of_cycle_for_first_training=number_of_cycle_for_first_training, get_validation_set=True,
@@ -240,8 +253,12 @@ def train_AdaBN_spectrograms(examples_datasets_train, labels_datasets_train, num
             print(np.shape(participants_train[participant_i][session_j]))
 
             # Classifier and discriminator
-            gesture_classification = SpectrogramConvNet(number_of_class=number_of_classes, num_kernels=num_kernels,
-                                                        kernel_size=filter_size, dropout=0.5).cuda()
+            if spectrogram_model:
+                gesture_classification = SpectrogramConvNet(number_of_class=number_of_classes, num_kernels=num_kernels,
+                                                            kernel_size=filter_size, dropout=0.5).cuda()
+            else:
+                gesture_classification = TSD_Network(number_of_class=number_of_classes, num_neurons=num_kernels,
+                                                     feature_vector_input_length=feature_vector_input_length).cuda()
 
             # optimizer
             precision = 1e-8
@@ -268,12 +285,14 @@ def train_AdaBN_spectrograms(examples_datasets_train, labels_datasets_train, num
                                        "/participant_%d/best_state_%d.pt" %
                                        (participant_i, session_j))
 
+
 def train_DA_spectrograms(examples_datasets_train, labels_datasets_train, num_kernels, filter_size=(4, 10),
                           path_weights_to_load_from_for_dirtT='../weights_VADA_TWO_Cycles', algo_name="DANN",
                           path_weights_to_save_to="../Weights/weights_", batch_size=512, patience_increment=10,
                           path_weights_fine_tuning="../weights_TWO_CYCLES_normal_training_fine_tuning",
                           number_of_cycle_for_first_training=3, number_of_cycles_rest_of_training=3,
-                          gestures_to_remove=None, number_of_classes=11):
+                          gestures_to_remove=None, number_of_classes=11, spectrogram_model=True,
+                          feature_vector_input_length=None, learning_rate=0.001316):
     participants_train, participants_validation, participants_test = load_dataloaders_training_sessions_spectrogram(
         examples_datasets_train, labels_datasets_train, batch_size=batch_size,
         number_of_cycle_for_first_training=number_of_cycle_for_first_training, get_validation_set=True,
@@ -288,14 +307,17 @@ def train_DA_spectrograms(examples_datasets_train, labels_datasets_train, num_ke
             print(np.shape(participants_train[participant_i][session_j]))
 
             # Classifier and discriminator
-            gesture_classification = SpectrogramConvNet(number_of_class=number_of_classes, num_kernels=num_kernels,
-                                                        kernel_size=filter_size, dropout=0.5).cuda()
+            if spectrogram_model:
+                gesture_classification = SpectrogramConvNet(number_of_class=number_of_classes, num_kernels=num_kernels,
+                                                            kernel_size=filter_size, dropout=0.5).cuda()
+            else:
+                gesture_classification = TSD_Network(number_of_class=number_of_classes, num_neurons=num_kernels,
+                                                     feature_vector_input_length=feature_vector_input_length).cuda()
 
             # loss functions
             crossEntropyLoss = nn.CrossEntropyLoss().cuda()
             # optimizer
             precision = 1e-8
-            learning_rate = 0.001316
             optimizer_classifier = optim.Adam(gesture_classification.parameters(), lr=learning_rate, betas=(0.5, 0.999))
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer_classifier, mode='min', factor=.2,
                                                              patience=5, verbose=True, eps=precision)
@@ -343,7 +365,6 @@ def train_DA_spectrograms(examples_datasets_train, labels_datasets_train, num_ke
                                                 validation_dataset_source=participants_validation[participant_i][0],
                                                 patience_increment=patience_increment)
             elif "Dirt_T" in algo_name:
-                learning_rate = 0.001316
                 optimizer_classifier = optim.Adam(gesture_classification.parameters(), lr=learning_rate,
                                                   betas=(0.5, 0.999))
                 # Dirt T need Conditional Entropy loss and Virtual Adversarial Training loss too

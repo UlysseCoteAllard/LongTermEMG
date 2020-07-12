@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 import torch
 
-from LongTermClassificationMain.Models.spectrogram_ConvNet import SpectrogramConvNet
+from LongTermClassificationMain.Models.TSD_neural_network import TSD_Network
 from LongTermClassificationMain.TrainingsAndEvaluations.training_loops_preparations import train_Spectrogram_fine_tuning
 from LongTermClassificationMain.PrepareAndLoadDataLongTerm. \
     load_dataset_spectrogram_in_dataloader import load_dataloaders_training_sessions
@@ -14,10 +14,11 @@ from LongTermClassificationMain.TrainingsAndEvaluations.utils_training_and_evalu
     long_term_classification_graph, long_term_pointplot
 
 
-def test_spectrogram_ConvNet_on_training_sessions(examples_datasets_train, labels_datasets_train, num_kernel,
-                                                  path_weights='../weights', algo_name="Normal_Training",
-                                                  filter_size=(4, 10), use_only_first_training=False,
-                                                  cycle_for_test=None, gestures_to_remove=None, number_of_classes=11):
+def test_TSD_DNN_on_training_sessions(examples_datasets_train, labels_datasets_train, num_neurons,
+                                      feature_vector_input_length=385,
+                                      path_weights='../weights', algo_name="Normal_Training",
+                                      use_only_first_training=False, cycle_for_test=None,
+                                      gestures_to_remove=None, number_of_classes=11):
     _, _, participants_test = load_dataloaders_training_sessions(examples_datasets_train, labels_datasets_train,
                                                                  batch_size=512, cycle_for_test=cycle_for_test,
                                                                  gestures_to_remove=gestures_to_remove)
@@ -30,8 +31,8 @@ def test_spectrogram_ConvNet_on_training_sessions(examples_datasets_train, label
         predictions_participant = []
         ground_truth_participant = []
         accuracies_participant = []
-        model = SpectrogramConvNet(number_of_class=number_of_classes, num_kernels=num_kernel,
-                                   kernel_size=filter_size).cuda()
+        model = TSD_Network(number_of_class=number_of_classes, feature_vector_input_length=feature_vector_input_length,
+                            num_neurons=num_neurons).cuda()
         for session_index, training_session_test_data in enumerate(dataset_test):
             if use_only_first_training:
                 best_state = torch.load(
@@ -76,15 +77,15 @@ def test_spectrogram_ConvNet_on_training_sessions(examples_datasets_train, label
     print("OVERALL ACCURACY: " + str(np.mean(accuracies_to_display)))
 
     if use_only_first_training:
-        file_to_open = "../../results/test_accuracy_on_training_sessions_" + algo_name + "_no_retraining_" + str(
+        file_to_open = "results_tsd/test_accuracy_on_training_sessions_" + algo_name + "_no_retraining_" + str(
             filter_size[1]) + ".txt"
-        np.save("../../results/predictions_training_session_" + algo_name + "_no_retraining", (ground_truths,
+        np.save("results_tsd/predictions_training_session_" + algo_name + "_no_retraining", (ground_truths,
                                                                                                predictions,
                                                                                                model_outputs))
     else:
-        file_to_open = "../../results/test_accuracy_on_training_sessions_" + algo_name + "_WITH_RETRAINING_" + str(
+        file_to_open = "results_tsd/test_accuracy_on_training_sessions_" + algo_name + "_WITH_RETRAINING_" + str(
             filter_size[1]) + ".txt"
-        np.save("../../results/predictions_training_session_" + algo_name + "_WITH_RETRAINING", (ground_truths,
+        np.save("results_tsd/predictions_training_session_" + algo_name + "_WITH_RETRAINING", (ground_truths,
                                                                                                  predictions,
                                                                                                  model_outputs))
     with open(file_to_open, "a") as \
@@ -100,83 +101,90 @@ def test_spectrogram_ConvNet_on_training_sessions(examples_datasets_train, label
 
 if __name__ == "__main__":
     print(os.listdir("../../"))
-    with open("../../Processed_datasets/Spectrograms_training_session.pickle", 'rb') as f:
+    with open("../../../Processed_datasets/TSD_features_set_training_session.pickle", 'rb') as f:
         dataset_training = pickle.load(file=f)
 
     training_datetimes = dataset_training['training_datetimes']
     examples_datasets_train = dataset_training['examples_training']
     labels_datasets_train = dataset_training['labels_training']
 
-    algo_name = "11Gestures_standard_ConvNet_THREE_cycles_SPECTROGRAM"
-    path_to_save_to = "../Weights/weights_THREE_CYCLES_SPECTROGRAMS_ELEVEN_Gestures"
+    algo_name = "11Gestures_standard_ConvNet_THREE_Cycles_TSD"
+    path_to_save_to = "Weights_TSD/weights_THREE_cycles_TSD_ELEVEN_GESTURES"
 
-    filter_size = [[4, 7], [3, 7], [3, 7], [3, 6]]
-    num_kernels = [16, 32, 64, 128]
-    # gestures_to_remove = [5, 6, 9, 10]
+    filter_size = [200, 200, 200]
+    feature_vector_input_length = 385
+    gestures_to_remove = [5, 6, 9, 10]
     gestures_to_remove = None
     number_of_classes = 11
+    learning_rate = 0.002515
     '''
-    train_Spectrogram_fine_tuning(examples_datasets_train, labels_datasets_train, filter_size=filter_size,
-                                  num_kernels=num_kernels, number_of_cycle_for_first_training=4,
+    train_Spectrogram_fine_tuning(examples_datasets_train, labels_datasets_train, filter_size=None,
+                                  num_kernels=filter_size, number_of_cycle_for_first_training=4,
                                   number_of_cycles_rest_of_training=4, path_weight_to_save_to=path_to_save_to,
                                   gestures_to_remove=gestures_to_remove, number_of_classes=number_of_classes,
-                                  batch_size=128)
+                                  batch_size=128, spectrogram_model=False,
+                                  feature_vector_input_length=feature_vector_input_length,
+                                  learning_rate=learning_rate)
 
-    test_spectrogram_ConvNet_on_training_sessions(examples_datasets_train, labels_datasets_train,
-                                                  filter_size=filter_size, use_only_first_training=True,
-                                                  num_kernel=num_kernels, path_weights=path_to_save_to,
-                                                  algo_name=algo_name, gestures_to_remove=gestures_to_remove,
-                                                  number_of_classes=number_of_classes, cycle_for_test=3)
+    test_TSD_DNN_on_training_sessions(examples_datasets_train, labels_datasets_train,
+                                      num_neurons=filter_size, use_only_first_training=True,
+                                      path_weights=path_to_save_to,
+                                      feature_vector_input_length=feature_vector_input_length,
+                                      algo_name=algo_name, gestures_to_remove=gestures_to_remove,
+                                      number_of_classes=number_of_classes, cycle_for_test=3)
 
-    test_spectrogram_ConvNet_on_training_sessions(examples_datasets_train, labels_datasets_train,
-                                                  filter_size=filter_size, use_only_first_training=False,
-                                                  num_kernel=num_kernels, path_weights=path_to_save_to,
-                                                  algo_name=algo_name, gestures_to_remove=gestures_to_remove,
-                                                  number_of_classes=number_of_classes, cycle_for_test=3)
+    test_TSD_DNN_on_training_sessions(examples_datasets_train, labels_datasets_train,
+                                      num_neurons=filter_size, use_only_first_training=False,
+                                      path_weights=path_to_save_to,
+                                      feature_vector_input_length=feature_vector_input_length,
+                                      algo_name=algo_name, gestures_to_remove=gestures_to_remove,
+                                      number_of_classes=number_of_classes, cycle_for_test=3)
     '''
     ground_truths_SCADANN, predictions_SCADANN, _ = np.load(
-        "../../results/predictions_training_session_SCADANN_7Gestures_ALL_SESSIONS_no_retraining.npy",
+        "results_tsd/predictions_training_session_SCADANN_TWO_CYCLES_11Gestures_TSD_no_retraining.npy",
         allow_pickle=True)
 
     ground_truths_multiple_vote, predictions_multiple_vote, _ = np.load(
-        "../../results/predictions_training_session_MultipleVote_7Gestures__2_CYCLES_no_retraining.npy",
+        "results_tsd/predictions_training_session_MultipleVote_TWO_CYCLES_11Gestures_no_retraining.npy",
         allow_pickle=True)
 
     ground_truths_DANN, predictions_DANN, _ = np.load(
-        "../../results/predictions_training_session_DANN_7Gestures_Spectrogram.npy",
+        "results_tsd/predictions_training_session_DANN_TWO_CYCLES_11Gestures_TSD.npy",
         allow_pickle=True)
 
     ground_truths_VADA, predictions_VADA, _ = np.load(
-        "../../results/predictions_training_session_VADA_7Gestures_Spectrogram.npy",
+        "results_tsd/predictions_training_session_VADA_TWO_CYCLES_11Gestures_TSD.npy",
         allow_pickle=True)
 
     ground_truths_dirt_t, predictions_dirt_t, _ = np.load(
-        "../../results/predictions_training_session_Dirt_T_7Gestures_Spectrogram.npy",
+        "results_tsd/predictions_training_session_Dirt_T_TWO_CYCLES_11Gestures_TSD.npy",
         allow_pickle=True)
 
     ground_truths_AdaBN, predictions_AdaBN, _ = np.load(
-        "../../results/predictions_training_session_AdaBN_Two_Cycles_7Gestures_Spectrogram.npy",
+        "results_tsd/predictions_training_session_AdaBN_TWO_CYCLES_11Gestures_TSD.npy",
         allow_pickle=True)
 
     ground_truths_WITH_retraining, predictions_WITH_retraining, _ = np.load(
-        "../../results/predictions_training_session_7Gestures_standard_ConvNet_2_cycles_SPECTROGRAM_WITH_RETRAINING.npy",
+        "results_tsd/predictions_training_session_11Gestures_standard_ConvNet_TWO_Cycles_TSD_WITH_RETRAINING.npy",
         allow_pickle=True)
 
     ground_truths_no_retraining, predictions_no_retraining, _ = np.load(
-        "../../results/predictions_training_session_7Gestures_standard_ConvNet_2_cycles_SPECTROGRAM_no_retraining.npy",
+        "results_tsd/predictions_training_session_11Gestures_standard_ConvNet_TWO_Cycles_TSD_no_retraining.npy",
         allow_pickle=True)
 
     print(ground_truths_no_retraining)
-    '''
+
+
+
     classes = ["Neutral", "Radial Deviation", "Wrist Flexion", "Ulnar Deviation", "Wrist Extension", "Supination",
                "Pronation", "Power Grip", "Open Hand", "Chuck Grip", "Pinch Grip"]
     '''
     classes = ["Neutral", "Radial Deviation", "Wrist Flexion", "Ulnar Deviation", "Wrist Extension", "Power Grip",
                "Open Hand"]
-
+    '''
     font_size = 24
     sns.set(style='dark')
-    '''
+
     ground_truths_array = [ground_truths_WITH_retraining, ground_truths_no_retraining, ground_truths_SCADANN]
     predictions_array = [predictions_WITH_retraining, predictions_no_retraining, predictions_SCADANN]
     text_legend_array = ["Recalibration", "No Calibration", "SCADANN"]
@@ -189,7 +197,7 @@ if __name__ == "__main__":
                          predictions_no_retraining]
     text_legend_array = ["Re-Calibration", "SCADANN", "MultipleVote", "DANN", "VADA", "DIRT-T", "AdaBN",
                          "No Calibration"]
-
+    '''
     long_term_pointplot(ground_truths_in_array=ground_truths_array,
                         predictions_in_array=predictions_array,
                         text_for_legend_in_array=text_legend_array,

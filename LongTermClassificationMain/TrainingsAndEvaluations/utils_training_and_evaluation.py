@@ -454,12 +454,12 @@ def long_term_pointplot(ground_truths_in_array, predictions_in_array, text_for_l
     df = pd.DataFrame({"Time (days)": seance_index_array, "Accuracy": accuracies, "Participant": participant_indexes,
                        "Algorithm": algorithm_index_array})
 
-    sns.set(font_scale=3, style="whitegrid")
-    sns.set_context(font_scale=4, rc={"lines.linewidth": 4})
+    sns.set(font_scale=5, style="whitegrid")
+    sns.set_context(font_scale=5, rc={"lines.linewidth": 4})
     print(df["Algorithm"])
     linestyles = ['-', '--', '-.', (0, (1, 1)), (0, (3, 5, 1, 5)), (0, (5, 10)), (0, (5, 5)), (0, (5, 1))]
     markers = ['o', 's', "^", "*", "h", "p", "X"]
-    #g = sns.pointplot(x="Time (days)", y="Accuracy", data=df, hue="Algorithm", s=700, linestyles=linestyles,
+    # g = sns.pointplot(x="Time (days)", y="Accuracy", data=df, hue="Algorithm", s=700, linestyles=linestyles,
     #                  palette=cycle[0:len(ground_truths_in_array)], markers=markers[0:len(ground_truths_in_array)],
     #                  dodge=True, capsize=.05, legend_out=True, ci="sd")
     '''
@@ -469,10 +469,13 @@ def long_term_pointplot(ground_truths_in_array, predictions_in_array, text_for_l
     '''
     cycle = [cycle[i] for i in [0, 2, 3]]
     g = sns.barplot(x="Time (days)", y="Accuracy", data=df, hue="Algorithm",
-                      palette=cycle,
-                      dodge=True, capsize=.05, ci="sd")
+                    palette=cycle,
+                    dodge=True, capsize=.05, ci="sd")
+
     # Put the legend out of the figure
     # plt.legend(bbox_to_anchor=(.9, 1), loc=2, borderaxespad=0.)
+    plt.setp(g.axes.get_legend().get_title(), fontsize='56')  # for legend title
+
     leg = g.axes.get_legend()
     text_legend_array = []
     for i, text_legend in enumerate(text_for_legend_in_array):
@@ -481,6 +484,7 @@ def long_term_pointplot(ground_truths_in_array, predictions_in_array, text_for_l
         t.set_text(l)
 
     sns.despine(left=True)
+
     plt.show()
 
 
@@ -601,9 +605,9 @@ def long_term_classification_graph(ground_truths_in_array, predictions_in_array,
     for algorithm_1 in range(len(text_for_legend_in_array)):
         for algorithm_2 in range(algorithm_1 + 1, len(text_for_legend_in_array)):
             if algorithm_1 != algorithm_2:
-                samples_d1 = []
-                samples_d2 = []
                 for seance_j in range(0, number_of_seances_to_consider + 1):
+                    samples_d1 = []
+                    samples_d2 = []
                     samples_d1.extend(
                         df['Accuracy'][(df['algorithm_index'] == algorithm_1) & (df['Seance'] == seance_j)])
                     samples_d2.extend(
@@ -627,7 +631,7 @@ def get_statistics(accuracies, seance, algorithm_name):
 def get_cohen_Dz(samples_d1, samples_d2):
     # Pooled standard deviation
     difference = np.mean(samples_d1) - np.mean(samples_d2)
-    cohen_Dz = difference / np.std(samples_d1-samples_d2)
+    cohen_Dz = difference / np.std(samples_d1 - samples_d2, ddof=1)
     return cohen_Dz
 
 
