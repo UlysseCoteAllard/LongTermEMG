@@ -170,15 +170,3 @@ if __name__ == "__main__":
                               cycle_to_test=3)           
     '''
     # Training and testing stop
-
-    # Graphs production
-    ground_truths_no_retraining, predictions_no_retraining = np.load(
-        "../../results/predictions_training_session_no_retraining.npy")
-    print(ground_truths_no_retraining)
-
-    ground_truths_DANN, predictions_DANN = np.load(
-        "../../results/predictions_training_session_" + "DANN" + ".npy")
-    ground_truths_VADA, predictions_VADA = np.load(
-        "../../results/predictions_training_session_" + "VADA" + ".npy")
-    ground_truths_DirtT, predictions_DirtT = np.load(
-        "../../results/predictions_training_session_" + "Dirt_T" + ".npy")
