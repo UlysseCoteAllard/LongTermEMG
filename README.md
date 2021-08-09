@@ -18,7 +18,7 @@ In TrainingsAndEvaluations->ForTrainingSessions you have the different mains to 
 
 #Required libraries:
 
-The VADA and Dirt-T implementation is based on: https://github.com/ozanciga/dirt-t and https://github.com/RuiShu/dirt-t
+The VADA and Dirt-T implementation are based on: https://github.com/ozanciga/dirt-t and https://github.com/RuiShu/dirt-t
 
 Numpy https://numpy.org/
 
