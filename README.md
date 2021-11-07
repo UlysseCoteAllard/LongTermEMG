@@ -1,6 +1,6 @@
 # LongTermEMG
 
-Work in progress. 
+LongTerm 3DC Dataset as presentend in: Côté-Allard, Ulysse, et al. "A Transferable Adaptive Domain Adversarial Neural Network for Virtual Reality Augmented EMG-Based Gesture Recognition." IEEE Transactions on Neural Systems and Rehabilitation Engineering 29 (2021): 546-555.
 
 LongTerm 3DC Dataset is available here: http://ieee-dataport.org/1948
 
@@ -8,7 +8,7 @@ LongTerm 3DC Dataset is available here: http://ieee-dataport.org/1948
 
 
 
-First prepare the longterm 3DC Dataset by running: PrepareAndLoadDataLongTerm->prepare_from_raw_dataset.py Then in TrainingsAndEvaluations all the files are there which were used to obtain the results from: Virtual Reality to Study the Gap Between Offline and Real-Time EMG-based Gesture Recognition https://arxiv.org/abs/1912.09380
+First prepare the longterm 3DC Dataset by running: PrepareAndLoadDataLongTerm->prepare_from_raw_dataset.py Then in TrainingsAndEvaluations all the files are there which were used to obtain the results from: A Transferable Adaptive Domain Adversarial Neural Network for Virtual Reality Augmented EMG-Based Gesture Recognition https://arxiv.org/abs/1912.09380v2
 
 And
 
