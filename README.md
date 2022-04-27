@@ -8,11 +8,11 @@ LongTerm 3DC Dataset is available here: http://ieee-dataport.org/1948
 
 
 
-First prepare the longterm 3DC Dataset by running: PrepareAndLoadDataLongTerm->prepare_from_raw_dataset.py Then in TrainingsAndEvaluations all the files are there which were used to obtain the results from: A Transferable Adaptive Domain Adversarial Neural Network for Virtual Reality Augmented EMG-Based Gesture Recognition https://arxiv.org/abs/1912.09380v2
+First prepare the longterm 3DC Dataset by running: PrepareAndLoadDataLongTerm->prepare_from_raw_dataset.py Then in TrainingsAndEvaluations all the files are there which were used to obtain the results from: Côté-Allard, U., Gagnon-Turcotte, G., Phinyomark, A., Glette, K., Scheme, E., Laviolette, F., & Gosselin, B. (2021). A Transferable Adaptive Domain Adversarial Neural Network for Virtual Reality Augmented EMG-Based Gesture Recognition. IEEE Transactions on Neural Systems and Rehabilitation Engineering, 29, 546-555. (https://arxiv.org/abs/1912.09380v2)
 
 And
 
-Unsupervised Domain Adversarial Self-Calibration for Electromyographic-based Gesture Recognition
+Côté-Allard, U., Gagnon-Turcotte, G., Phinyomark, A., Glette, K., Scheme, E. J., Laviolette, F., & Gosselin, B. (2020). Unsupervised domain adversarial self-calibration for electromyography-based gesture recognition. IEEE Access, 8, 177941-177955. (https://ieeexplore.ieee.org/document/9207910)
 
 In TrainingsAndEvaluations->ForTrainingSessions you have the different mains to train the algorithms (spectrograms refers to the Unsupervised Domain Adversarial paper, otherwise it's the Virtual Reality paper). In the TrainingsAndEvaluations->self_learning you have the files to train both SCADANN and MV. Then TrainingsAndEvaluations->ForEvaluationSessions are the files using the evaluation sessions for the Virtual Reality paper. TrainingsAndEvaluations->SpectrogramEvaluationSessions are the files using the evaluation sessions for the Unsupervised Domain Adversarial paper.
 
